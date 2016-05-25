@@ -23,18 +23,18 @@ void WorkerThread::run()
         if (!job)
             continue;
 
-        if (job->isSync()) {
-            if (job->isPoison())
-                this->handleOnShutdown();
-            else
-                this->handleOnSynchronize();
-
+        if (job->isPoison()) {
+            this->handleOnShutdown();
+            job->operator()();
             continue;
+        } else if (job->isSync()) {
+            this->handleOnSynchronize();
+            job->operator()();
+        } else {
+            this->handleBeforeExecute(*job);
+            job->operator()();
+            this->handleAfterExecute(*job);
         }
-
-        this->handleBeforeExecute(*job);
-        job->operator()();
-        this->handleAfterExecute(*job);
     }
 }
 

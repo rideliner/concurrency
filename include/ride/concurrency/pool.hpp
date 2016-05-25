@@ -7,7 +7,6 @@
 
 #include <ride/concurrency/job.hpp>
 #include <ride/concurrency/containers/deque.hpp>
-#include <ride/concurrency/detail/barrier.hpp>
 
 namespace ride {
 
@@ -15,6 +14,9 @@ namespace detail {
 
 class WorkerThread;
 class WorkerThreadFactory;
+
+template <class Mutex_>
+class Barrier;
 
 } // end namespace detail
 
@@ -30,19 +32,13 @@ class ThreadPool
     typedef std::unique_lock<Mutex> Lock;
     typedef std::unique_ptr<Lock> LockPtr;
     typedef std::lock_guard<Mutex> LockGuard;
+    typedef detail::Barrier<Mutex> Barrier;
 
     WorkContainer work;
     mutable Mutex thread_management;
     std::atomic_size_t num_pseudo_workers, num_alive_workers;
-    std::unique_ptr<detail::Barrier> barrier;
+    std::shared_ptr<Barrier> join_barrier;
     std::forward_list<PolymorphicWorker> workers;
-
-    inline PolymorphicJob getJob()
-    {
-        PolymorphicJob job;
-        this->getJob(std::move(job));
-        return job;
-    }
 
     inline void getJob(PolymorphicJob&& job)
     { this->work.popFront(std::move(job)); }
@@ -61,16 +57,24 @@ class ThreadPool
 
     bool unsafeIsCurrentThreadInPool() const;
 
-    void collect(std::function<void(std::size_t)> action);
+    void safeJoin(bool remove_workers);
 
-    static inline PolymorphicJob createPoisonPill()
+    inline void synchronizeWorkers(std::size_t num_workers, std::shared_ptr<Barrier> barrier)
     {
-        return static_cast<PolymorphicJob>(new detail::PoisonJob());
+        for (std::size_t i = 0; i < num_workers; ++i)
+            this->work.pushBack(this->createSyncPill(barrier));
     }
 
-    static inline PolymorphicJob createSyncPill()
+    std::size_t setupBarrier(std::shared_ptr<Barrier>& barrier) const;
+
+    static inline PolymorphicJob createPoisonPill(std::shared_ptr<Barrier> barrier)
     {
-        return static_cast<PolymorphicJob>(new detail::SynchronizeJob());
+        return static_cast<PolymorphicJob>(new detail::PoisonJob<Mutex>(barrier));
+    }
+
+    static inline PolymorphicJob createSyncPill(std::shared_ptr<Barrier> barrier)
+    {
+        return static_cast<PolymorphicJob>(new detail::SynchronizeJob<Mutex>(barrier));
     }
 
     inline void handleAfterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job)
@@ -91,7 +95,8 @@ class ThreadPool
     inline void handleOnTimeoutWorker(detail::WorkerThread& worker)
     { this->onTimeoutWorker(worker); }
 
-    void handleOnSynchronizeWorker(detail::WorkerThread& worker);
+    inline void handleOnSynchronizeWorker(detail::WorkerThread& worker)
+    { this->onSynchronizeWorker(worker); }
 
     inline virtual void afterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job) { }
     inline virtual void beforeExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job) { }
@@ -103,23 +108,24 @@ class ThreadPool
     ThreadPool()
       : num_pseudo_workers(0)
       , num_alive_workers(0)
-      , barrier(nullptr)
+      , join_barrier(nullptr)
     { }
 
     ThreadPool(const ThreadPool&) = delete;
     ThreadPool& operator = (const ThreadPool&) = delete;
     virtual ~ThreadPool() = default;
 
-    /*inline virtual PolymorphicWorkerFactory getDefaultWorkerFactory() const
-    {
-        static const PolymorphicWorkerFactory DefaultFactory(new detail::SimpleWorkerThreadFactory<detail::WorkerThread>());
+    template <class Func_>
+    inline static PolymorphicJob createJob(Func_ function)
+    { return PolymorphicJob(new Job<typename Func_::result_type>(function)); }
 
-        return DefaultFactory;
-    }*/
+    template <class Func_>
+    inline void emplaceJob(Func_ function)
+    { this->work.emplaceBack(new Job<typename Func_::result_type>(function)); }
 
-    template <class T_, class... Args_>
-    inline static PolymorphicJob createJob(Args_... args)
-    { return PolymorphicJob(new Job<T_>(std::forward(args)...)); }
+    template <class Func_>
+    inline void emplacePriorityJob(Func_ function)
+    { this->work.emplaceFront(new Job<typename Func_::result_type>(function)); }
 
     template <class T_>
     inline void addJob(std::unique_ptr<Job<T_>>&& job_ptr)
@@ -181,8 +187,11 @@ class ThreadPool
     inline void clearJobs()
     { this->work.clear(); }
 
-    void join();
-    void synchronize();
+    inline void join()
+    { safeJoin(true); }
+    inline void wait()
+    { safeJoin(false); }
+    void sync();
 
     bool isCurrentThreadInPool() const;
 

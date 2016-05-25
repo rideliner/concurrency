@@ -2,6 +2,7 @@
 #include <ride/concurrency/pool.hpp>
 #include <ride/concurrency/detail/worker.hpp>
 #include <ride/concurrency/detail/worker_factory.hpp>
+#include <ride/concurrency/detail/barrier.hpp>
 
 #include <algorithm>
 
@@ -25,14 +26,24 @@ void ThreadPool::safeRemoveWorkersWhen(std::size_t to_remove, LockPtr lock, std:
         lock->unlock();
 
     for (std::size_t i = 0; i < to_remove; ++i)
-        how_to_remove(this->createPoisonPill());
+        how_to_remove(this->createPoisonPill(this->join_barrier));
 }
 
-void ThreadPool::collect(std::function<void(std::size_t)> action)
+std::size_t ThreadPool::setupBarrier(std::shared_ptr<Barrier>& barrier) const
+{
+    std::size_t num_workers = this->numWorkers();
+
+    if (num_workers > 0)
+        barrier.reset(new Barrier(this->thread_management, num_workers));
+
+    return num_workers;
+}
+
+void ThreadPool::safeJoin(bool remove_workers)
 {
     Lock lock(this->thread_management);
 
-    // don't allow collection from a worker thread
+    // don't allow a join from a worker thread
     if (this->unsafeIsCurrentThreadInPool())
     {
         lock.unlock();
@@ -40,43 +51,37 @@ void ThreadPool::collect(std::function<void(std::size_t)> action)
     }
 
     // if a barrier already exists, just wait for that barrier to open
-    if (this->barrier)
+    // copy the shared_ptr so it doesn't get reset while waiting on it
+    if (std::shared_ptr<Barrier> barrier = this->join_barrier)
     {
-        this->barrier->wait(lock);
+        barrier->unsafeWait(lock);
         lock.unlock();
         return;
     }
 
-    std::size_t num_workers = this->numWorkers();
-
-    if (num_workers == 0)
+    if (std::size_t num_workers = setupBarrier(this->join_barrier))
     { // don't setup a barrier if there are no workers
-        lock.unlock();
-        return;
+        if (remove_workers)
+            safeRemoveWorkersLater(num_workers, nullptr);
+        else
+            synchronizeWorkers(num_workers, this->join_barrier);
+
+        // wait for the barrier to open, then destroy it
+        this->join_barrier->unsafeWait(lock);
+        this->join_barrier.reset();
     }
-
-    this->barrier.reset(new detail::Barrier(num_workers));
-
-    action(num_workers);
-
-    // wait for the barrier to open, then destroy it
-    this->barrier->wait(lock);
-    this->barrier.reset();
 
     lock.unlock();
 }
 
-void ThreadPool::join()
+void ThreadPool::sync()
 {
-    collect(std::bind(&ThreadPool::safeRemoveWorkersLater, std::ref(*this), std::placeholders::_1, nullptr));
-}
+    Lock lock(this->thread_management);
+    std::shared_ptr<Barrier> barrier;
 
-void ThreadPool::synchronize()
-{
-    collect([&](std::size_t to_sync) {
-        for (std::size_t i = 0; i < to_sync; ++i)
-            this->work.pushBack(this->createSyncPill());
-    });
+    synchronizeWorkers(setupBarrier(barrier), barrier);
+
+    lock.unlock();
 }
 
 bool ThreadPool::unsafeIsCurrentThreadInPool() const
@@ -101,24 +106,10 @@ void ThreadPool::handleOnShutdownWorker(detail::WorkerThread& worker)
     Lock lock(this->thread_management);
 
     this->workers.remove_if([&id](const PolymorphicWorker& x) -> bool { return x->getId() == id; });
-    if (this->barrier)
-        this->barrier->unblock();
 
     lock.unlock();
 
     --this->num_alive_workers;
-}
-
-void ThreadPool::handleOnSynchronizeWorker(detail::WorkerThread& worker)
-{
-    this->onSynchronizeWorker(worker);
-
-    Lock lock(this->thread_management);
-
-    if (this->barrier)
-        this->barrier->unblockAndWait(lock);
-
-    lock.unlock();
 }
 
 } // end namespace ride

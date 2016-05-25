@@ -45,17 +45,5 @@ class Job<void>
     }
 };
 
-template <class Func_>
-std::unique_ptr<Job<typename Func_::result_type>> createJob(Func_ function)
-{
-    return std::unique_ptr<Job<typename Func_::result_type>>(new Job<typename Func_::result_type>(function));
-}
-
-/*template <class Func_>
-std::unique_ptr<Job<typename std::function<Func_>::result_type>> createJob(std::function<Func_> function)
-{
-    return std::unique_ptr<Job<typename std::function<Func_>::result_type>>(new Job<typename std::function<Func_>::result_type>(std::forward(function)));
-}*/
-
 } // end namespace ride
 

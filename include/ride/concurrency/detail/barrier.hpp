@@ -6,37 +6,62 @@
 
 namespace ride { namespace detail {
 
+template <class Mutex_>
 class Barrier
 {
+    typedef std::unique_lock<Mutex_> Lock;
+
+    Mutex_& mutex;
     std::atomic_size_t waiting_for;
-    std::condition_variable cond;
+    std::condition_variable_any cond;
   public:
     Barrier() = delete;
     Barrier(const Barrier&) = delete;
     Barrier& operator = (const Barrier&) = delete;
     virtual ~Barrier() { }
 
-    Barrier(std::size_t wait_for_occur)
-      : waiting_for(wait_for_occur)
+    Barrier(Mutex_& mutex, std::size_t wait_for_occur)
+      : mutex(mutex)
+      , waiting_for(wait_for_occur)
     { }
 
     inline void unblock()
+    {
+        Lock lock(this->mutex);
+
+        unsafeUnblock();
+
+        lock.unlock();
+    }
+
+    inline void unblockAndWait()
+    {
+        Lock lock(this->mutex);
+
+        unsafeUnblock();
+        unsafeWait(lock);
+
+        lock.unlock();
+    }
+
+    inline void wait()
+    {
+        Lock lock(this->mutex);
+
+        unsafeWait(lock);
+
+        lock.unlock();
+    }
+
+    inline void unsafeUnblock()
     {
         if (--waiting_for == 0)
             cond.notify_all();
     }
 
-    inline void unblockAndWait(std::unique_lock<std::mutex>& lock)
+    inline void unsafeWait(Lock& lock)
     {
-        unblock();
-        wait(lock);
-    }
-
-    // does not wait if the block is "opened"
-    inline void wait(std::unique_lock<std::mutex>& lock)
-    {
-        while (waiting_for > 0)
-            cond.wait(lock);
+        cond.wait(lock, [&]() { return waiting_for == 0; });
     }
 };
 

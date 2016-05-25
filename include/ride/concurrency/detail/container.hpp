@@ -28,15 +28,16 @@ class ConcurrentContainer
   private:
     inline void wait(Lock& lock)
     {
-        while (this->unsafeIsEmpty())
-            this->condition.wait(lock);
+        this->condition.wait(lock, [this]() {
+            return !this->unsafeIsEmpty();
+        });
     }
 
     template <class Rep_, class Period_>
     inline bool wait(Lock& lock, const std::chrono::duration<Rep_, Period_>& duration)
     {
         return this->condition.wait_for(lock, duration, [this]() {
-            return this->unsafeIsEmpty();
+            return !this->unsafeIsEmpty();
         });
     }
 
@@ -44,14 +45,14 @@ class ConcurrentContainer
     inline bool wait(Lock& lock, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     {
         return this->condition.wait_until(lock, timeout_time, [this]() {
-            return this->unsafeIsEmpty();
+            return !this->unsafeIsEmpty();
         });
     }
 
     inline bool wait(Lock& lock, std::try_to_lock_t)
     {
         return this->condition.wait(lock, [this]() {
-            return this->unsafeIsEmpty();
+            return !this->unsafeIsEmpty();
         });
     }
 
