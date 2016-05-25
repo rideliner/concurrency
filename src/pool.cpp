@@ -28,7 +28,7 @@ void ThreadPool::safeRemoveWorkersWhen(std::size_t to_remove, LockPtr lock, std:
         how_to_remove(this->createPoisonPill());
 }
 
-void ThreadPool::joinAll()
+void ThreadPool::collect(std::function<void(std::size_t)> action)
 {
     Lock lock(this->thread_management);
 
@@ -57,13 +57,26 @@ void ThreadPool::joinAll()
 
     this->barrier.reset(new detail::Barrier(num_workers));
 
-    this->safeRemoveWorkersLater(num_workers, nullptr);
+    action(num_workers);
 
     // wait for the barrier to open, then destroy it
     this->barrier->wait(lock);
     this->barrier.reset();
 
     lock.unlock();
+}
+
+void ThreadPool::join()
+{
+    collect(std::bind(&ThreadPool::safeRemoveWorkersLater, std::ref(*this), std::placeholders::_1, nullptr));
+}
+
+void ThreadPool::synchronize()
+{
+    collect([&](std::size_t to_sync) {
+        for (std::size_t i = 0; i < to_sync; ++i)
+            this->work.pushBack(this->createSyncPill());
+    });
 }
 
 bool ThreadPool::unsafeIsCurrentThreadInPool() const
@@ -94,6 +107,18 @@ void ThreadPool::handleOnShutdownWorker(detail::WorkerThread& worker)
     lock.unlock();
 
     --this->num_alive_workers;
+}
+
+void ThreadPool::handleOnSynchronizeWorker(detail::WorkerThread& worker)
+{
+    this->onSynchronizeWorker(worker);
+
+    Lock lock(this->thread_management);
+
+    if (this->barrier)
+        this->barrier->unblockAndWait(lock);
+
+    lock.unlock();
 }
 
 } // end namespace ride

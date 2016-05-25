@@ -2,8 +2,7 @@
 #pragma once
 
 #include <ride/concurrency/detail/basic_job.hpp>
-#include <ride/concurrency/detail/poison_job.hpp>
-#include <ride/concurrency/detail/abstract_job.hpp>
+#include <ride/concurrency/detail/special_job.hpp>
 
 namespace ride {
 

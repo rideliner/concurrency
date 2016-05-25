@@ -49,11 +49,18 @@ class WorkerThread
         this->pool.handleOnTimeoutWorker(*this);
     }
 
+    inline void handleOnSynchronize()
+    {
+        this->onSynchronize();
+        this->pool.handleOnSynchronizeWorker(*this);
+    }
+
     inline virtual void beforeExecute(AbstractJob& job) { }
     inline virtual void afterExecute(AbstractJob& job) { }
     inline virtual void onStartup() { }
     inline virtual void onShutdown() { }
     inline virtual void onTimeout() { }
+    inline virtual void onSynchronize() { }
 
     inline virtual bool getJob(std::unique_ptr<AbstractJob>&& job)
     { this->pool.getJob(std::move(job)); return false; }

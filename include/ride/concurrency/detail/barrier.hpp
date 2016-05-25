@@ -26,6 +26,12 @@ class Barrier
             cond.notify_all();
     }
 
+    inline void unblockAndWait(std::unique_lock<std::mutex>& lock)
+    {
+        unblock();
+        wait(lock);
+    }
+
     // does not wait if the block is "opened"
     inline void wait(std::unique_lock<std::mutex>& lock)
     {

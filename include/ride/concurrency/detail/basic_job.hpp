@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <ride/concurrency/detail/poison_job.hpp>
+#include <ride/concurrency/detail/abstract_job.hpp>
 
 #include <functional>
 #include <future>
@@ -42,6 +42,9 @@ class BasicJob
     { return promise.get_future(); }
 
     inline bool isPoison() const final override
+    { return false; }
+
+    inline bool isSync() const final override
     { return false; }
 };
 

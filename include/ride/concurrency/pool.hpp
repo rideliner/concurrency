@@ -61,11 +61,16 @@ class ThreadPool
 
     bool unsafeIsCurrentThreadInPool() const;
 
-    void unlockBarrier();
+    void collect(std::function<void(std::size_t)> action);
 
     static inline PolymorphicJob createPoisonPill()
     {
         return static_cast<PolymorphicJob>(new detail::PoisonJob());
+    }
+
+    static inline PolymorphicJob createSyncPill()
+    {
+        return static_cast<PolymorphicJob>(new detail::SynchronizeJob());
     }
 
     inline void handleAfterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job)
@@ -86,11 +91,14 @@ class ThreadPool
     inline void handleOnTimeoutWorker(detail::WorkerThread& worker)
     { this->onTimeoutWorker(worker); }
 
+    void handleOnSynchronizeWorker(detail::WorkerThread& worker);
+
     inline virtual void afterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job) { }
     inline virtual void beforeExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job) { }
     inline virtual void onStartupWorker(detail::WorkerThread& worker) { }
     inline virtual void onShutdownWorker(detail::WorkerThread& worker) { }
     inline virtual void onTimeoutWorker(detail::WorkerThread& worker) { }
+    inline virtual void onSynchronizeWorker(detail::WorkerThread& worker) { }
   public:
     ThreadPool()
       : num_pseudo_workers(0)
@@ -111,9 +119,7 @@ class ThreadPool
 
     template <class T_, class... Args_>
     inline static PolymorphicJob createJob(Args_... args)
-    {
-        return PolymorphicJob(new Job<T_>(std::forward(args)...));
-    }
+    { return PolymorphicJob(new Job<T_>(std::forward(args)...)); }
 
     template <class T_>
     inline void addJob(std::unique_ptr<Job<T_>>&& job_ptr)
@@ -175,7 +181,8 @@ class ThreadPool
     inline void clearJobs()
     { this->work.clear(); }
 
-    void joinAll();
+    void join();
+    void synchronize();
 
     bool isCurrentThreadInPool() const;
 
