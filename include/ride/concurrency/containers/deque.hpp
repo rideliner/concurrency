@@ -7,6 +7,30 @@
 
 namespace ride {
 
+namespace detail {
+
+template <class T_, class... Args_>
+class Emplacer<std::deque<T_>, Args_...>
+  : AbstractEmplacer<std::deque<T_>>
+  , BasicForwardEmplacer<std::deque<T_>, Args_...>
+  , BasicBackwardEmplacer<std::deque<T_>, Args_...>
+{
+  public:
+    using AbstractEmplacer<std::deque<T_>>::AbstractEmplacer;
+
+    void emplaceFront(Args_&&... args) override
+    {
+        this->container.emplace_front(std::forward<Args_>(args)...);
+    }
+
+    void emplaceBack(Args_&&... args) override
+    {
+        this->container.emplace_back(std::forward<Args_>(args)...);
+    }
+};
+
+} // end namespace detail
+
 template <class T_>
 class ConcurrentDeque
   : public detail::BidirectionalConcurrentContainer<T_, std::deque<T_>>
@@ -21,14 +45,14 @@ class ConcurrentDeque
     void unsafeClear() override
     { this->data.clear(); }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"
     void unsafeAddFront(const T_& element)
-    { this->data.push_front(element);
-    }
+    { this->data.push_front(element); }
     void unsafeAddFront(T_&& element)
     { this->data.push_front(std::move(element)); }
     void unsafeAddBack(const T_& element)
-    { this->data.push_back(element);
-    }
+    { this->data.push_back(element); }
     void unsafeAddBack(T_&& element)
     { this->data.push_back(std::move(element)); }
 
@@ -55,6 +79,7 @@ class ConcurrentDeque
         element = std::move(this->data.back());
         this->data.pop_back();
     }
+#pragma clang diagnostic pop
   public:
     ConcurrentDeque() = default;
 };

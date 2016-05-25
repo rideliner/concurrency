@@ -17,45 +17,42 @@ class ConcurrentContainer
     typedef T_ Type;
     typedef Container_ ContainerType;
   protected:
-    typedef std::mutex Mutex;
+    typedef std::timed_mutex Mutex;
     typedef std::unique_lock<Mutex> Lock;
     typedef std::lock_guard<Mutex> LockGuard;
     typedef std::unique_ptr<Lock> LockPtr;
 
     ContainerType data;
     mutable Mutex mutex;
-    std::condition_variable condition;
+    std::condition_variable_any condition;
   private:
-    // returns false when wait timesouts
-    inline bool wait(Lock& lock)
+    inline void wait(Lock& lock)
     {
         while (this->unsafeIsEmpty())
             this->condition.wait(lock);
-
-        // return false since this method never times out
-        return false;
     }
 
     template <class Rep_, class Period_>
-    inline bool wait(Lock& lock, const std::chrono::duration<Rep_, Period_>& args)
+    inline bool wait(Lock& lock, const std::chrono::duration<Rep_, Period_>& duration)
     {
-        bool timedout = false;
-
-        while (this->unsafeIsEmpty() && !timedout)
-            timedout = this->condition.wait_for(args) == std::cv_status::timeout;
-
-        return timedout;
+        return this->condition.wait_for(lock, duration, [this]() {
+            return this->unsafeIsEmpty();
+        });
     }
 
     template <class Clock_, class Duration_>
-    inline bool wait(Lock& lock, const std::chrono::time_point<Clock_, Duration_>& args)
+    inline bool wait(Lock& lock, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     {
-        bool timedout = false;
+        return this->condition.wait_until(lock, timeout_time, [this]() {
+            return this->unsafeIsEmpty();
+        });
+    }
 
-        while (this->unsafeIsEmpty() && !timedout)
-            timedout = this->condition.wait_until(args) == std::cv_status::timeout;
-
-        return timedout;
+    inline bool wait(Lock& lock, std::try_to_lock_t)
+    {
+        return this->condition.wait(lock, [this]() {
+            return this->unsafeIsEmpty();
+        });
     }
 
     // returns true if the lock is still valid
@@ -84,32 +81,22 @@ class ConcurrentContainer
         return true;
     }
 
-    template <class... Args_>
-    inline bool tryLock(LockPtr& lock, Args_... args) const
+    template <class Timeout_>
+    inline bool tryLock(LockPtr& lock, Timeout_&& timeout) const
     {
-        lock.reset(new Lock(this->mutex, std::forward<Args_>(args)...));
+        lock.reset(new Lock(this->mutex, std::forward<Timeout_>(timeout)));
 
         return resetLockIfNotOwned(lock);
     }
 
-    inline bool tryLock(LockPtr& lock) const
+    template <class Timeout_>
+    inline bool tryLockForRemove(LockPtr& lock, Timeout_&& timeout) const
     {
-        return tryLock(lock, std::try_to_lock);
-    }
-
-    template <class... Args_>
-    inline bool tryLockForRemove(LockPtr& lock, Args_... args) const
-    {
-        return tryLock(lock, std::forward<Args_>(args)...) && resetLockIfContainerEmpty(lock);
-    }
-
-    inline bool tryLockForRemove(LockPtr& lock) const
-    {
-        return tryLock(lock, std::try_to_lock);
+        return tryLock(lock, std::forward<Timeout_>(timeout)) && resetLockIfContainerEmpty(lock);
     }
   protected:
-    template <class A_>
-    void safeAdd(A_ action)
+    template <class Action_>
+    void safeAdd(Action_ action)
     {
         Lock lock(this->mutex);
 
@@ -119,12 +106,12 @@ class ConcurrentContainer
         lock.unlock();
     }
 
-    template <class A_, class... Args_>
-    bool safeTryAdd(A_ action, Args_... args)
+    template <class Action_, class Timeout_>
+    bool safeTryAdd(Action_ action, Timeout_&& timeout)
     {
         LockPtr lock;
 
-        if (!tryLock(lock, std::forward<Args_>(args)...))
+        if (!tryLock(lock, std::forward<Timeout_>(timeout)))
             return false;
 
         action();
@@ -134,8 +121,8 @@ class ConcurrentContainer
         return true;
     }
 
-    template <class A_>
-    void safeRemove(A_ action)
+    template <class Action_>
+    void safeRemove(Action_ action)
     {
         Lock lock(this->mutex);
 
@@ -146,23 +133,23 @@ class ConcurrentContainer
         lock.unlock();
     }
 
-    template <class A_, class... Args_>
-    bool safeTryRemove(A_ action, Args_... args)
+    template <class Action_, class Timeout_>
+    bool safeTryRemove(Action_ action, Timeout_&& timeout)
     {
         LockPtr lock;
 
-        if (!tryLockForRemove(lock, std::forward<Args_>(args)...))
+        if (!tryLockForRemove(lock, std::forward<Timeout_>(timeout)))
             return false;
 
         // if not empty or timedout
-        bool timedout = this->wait(lock, std::forward<Args_>(args)...);
+        if (!this->wait(lock, std::forward<Timeout_>(timeout)))
+            return false;
 
-        if (!timedout)
-            action();
+        action();
 
         lock->unlock();
 
-        return !timedout;
+        return true;
     }
 
     virtual bool unsafeIsEmpty() const = 0;

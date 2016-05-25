@@ -1,6 +1,6 @@
-CC = g++
-CFLAGS = -pthread -std=c++11 -Iinclude -Wall
-LINK = 
+CC = clang++
+CFLAGS = -pthread -std=c++14 -Iinclude -Wall
+LINK = -Llib -lconcurrency
 
 OBJS = build/pool.o build/worker.o
 LIBS = lib/libconcurrency.a

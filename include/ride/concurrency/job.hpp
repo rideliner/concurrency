@@ -32,7 +32,7 @@ class Job<void>
 {
   public:
     Job(typename detail::BasicJob<void>::FunctionType func)
-      : BasicJob<void>(func)
+      : detail::BasicJob<void>(func)
     { }
 
     void operator ()() override

@@ -7,6 +7,30 @@
 
 namespace ride {
 
+namespace detail {
+
+template <class T_, class... Args_>
+class Emplacer<std::list<T_>, Args_...>
+  : AbstractEmplacer<std::list<T_>>
+  , BasicForwardEmplacer<std::list<T_>, Args_...>
+  , BasicBackwardEmplacer<std::list<T_>, Args_...>
+{
+  public:
+    using AbstractEmplacer<std::list<T_>>::AbstractEmplacer;
+
+    void emplaceFront(Args_&&... args) override
+    {
+        this->container.emplace_front(std::forward<Args_>(args)...);
+    }
+
+    void emplaceBack(Args_&&... args) override
+    {
+        this->container.emplace_back(std::forward<Args_>(args)...);
+    }
+};
+
+} // end namespace detail
+
 template <class T_>
 class ConcurrentList
   : public detail::BidirectionalConcurrentContainer<T_, std::list<T_>>
@@ -21,6 +45,8 @@ class ConcurrentList
     void unsafeClear() override
     { this->data.clear(); }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"
     inline void unsafeAddFront(const T_& element)
     { this->data.push_front(element); }
     inline void unsafeAddFront(T_&& element)
@@ -53,6 +79,7 @@ class ConcurrentList
         element = std::move(this->data.back());
         this->data.pop_back();
     }
+#pragma clang diagnostic pop
   public:
     ConcurrentList() = default;
 };

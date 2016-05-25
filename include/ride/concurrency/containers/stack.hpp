@@ -7,6 +7,24 @@
 
 namespace ride {
 
+namespace detail {
+
+template <class T_, class... Args_>
+class Emplacer<std::stack<T_>, Args_...>
+  : AbstractEmplacer<std::stack<T_>>
+  , BasicForwardEmplacer<std::stack<T_>, Args_...>
+{
+  public:
+    using AbstractEmplacer<std::stack<T_>>::AbstractEmplacer;
+
+    void emplaceFront(Args_&&... args) override
+    {
+        this->container.emplace(std::forward<Args_>(args)...);
+    }
+};
+
+} // end namespace detail
+
 template <class T_>
 class ConcurrentStack
   : public detail::ForwardConcurrentContainer<T_, std::stack<T_>>
@@ -24,6 +42,8 @@ class ConcurrentStack
             this->data.pop();
     }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"
     inline void unsafeAddFront(const T_& element)
     { this->data.push(element); }
     inline void unsafeAddFront(T_&& element)
@@ -40,6 +60,7 @@ class ConcurrentStack
         element = std::move(this->data.top());
         this->data.pop();
     }
+#pragma clang diagnostic pop
   public:
     ConcurrentStack() = default;
 };

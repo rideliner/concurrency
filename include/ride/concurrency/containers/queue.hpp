@@ -7,23 +7,43 @@
 
 namespace ride {
 
+namespace detail {
+
+template <class T_, class... Args_>
+class Emplacer<std::queue<T_>, Args_...>
+  : AbstractEmplacer<std::queue<T_>>
+  , BasicForwardEmplacer<std::queue<T_>, Args_...>
+{
+  public:
+    using AbstractEmplacer<std::queue<T_>>::AbstractEmplacer;
+
+    void emplaceFront(Args_&&... args) override
+    {
+        this->container.emplace(std::forward<Args_>(args)...);
+    }
+};
+
+} // end namespace detail
+
 template <class T_>
 class ConcurrentQueue
   : public detail::ForwardConcurrentContainer<T_, std::queue<T_>>
 {
   protected:
-    bool unsafeIsEmpty() const
+    bool unsafeIsEmpty() const override
     { return this->data.empty(); }
 
-    std::size_t unsafeSize() const
+    std::size_t unsafeSize() const override
     { return this->data.size(); }
 
-    void unsafeClear()
+    void unsafeClear() override
     {
         for (std::size_t i = 0; i < this->unsafeSize(); ++i)
             this->data.pop();
     }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"
     inline void unsafeAddFront(const T_& element)
     { this->data.push(element); }
     inline void unsafeAddFront(T_&& element)
@@ -40,6 +60,7 @@ class ConcurrentQueue
         element = std::move(this->data.front());
         this->data.pop();
     }
+#pragma clang diagnostic pop
   public:
     ConcurrentQueue() = default;
 };

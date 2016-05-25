@@ -3,13 +3,15 @@
 
 #include <type_traits>
 
+#include "emplacer.hpp"
+
 namespace ride { namespace detail {
 
 template <class T_>
-using LRef_t = std::integral_constant<bool, std::is_copy_constructible<T_>::value && std::is_copy_assignable<T_>::value>;
+constexpr bool LRef_t = std::integral_constant<bool, std::is_copy_constructible<T_>::value && std::is_copy_assignable<T_>::value>::value;
 
 template <class T_>
-using RRef_t = std::integral_constant<bool, std::is_move_constructible<T_>::value && std::is_move_assignable<T_>::value>;
+constexpr bool RRef_t = std::integral_constant<bool, std::is_move_constructible<T_>::value && std::is_move_assignable<T_>::value>::value;
 
 template <class T_, bool Enabled_>
 class AbstractForwardContainerLValRef;
@@ -64,16 +66,18 @@ class AbstractBackwardContainerRValRef<T_, true>
     virtual void unsafeRemoveBack(T_&&) = 0;
 };
 
-template <class T_, bool LRef_, bool RRef_>
+template <class T_, class Container_>
 class AbstractForwardContainer
-  : protected AbstractForwardContainerLValRef<T_, LRef_>
-  , protected AbstractForwardContainerRValRef<T_, RRef_>
+  : protected AbstractForwardContainerLValRef<T_, LRef_t<T_>>
+  , protected AbstractForwardContainerRValRef<T_, RRef_t<T_>>
+  , protected ForwardContainerEmplace<Container_>
 { };
 
-template <class T_, bool LRef_, bool RRef_>
+template <class T_, class Container_>
 class AbstractBackwardContainer
-  : protected AbstractBackwardContainerLValRef<T_, LRef_>
-  , protected AbstractBackwardContainerRValRef<T_, RRef_>
+  : protected AbstractBackwardContainerLValRef<T_, LRef_t<T_>>
+  , protected AbstractBackwardContainerRValRef<T_, RRef_t<T_>>
+  , protected BackwardContainerEmplace<Container_>
 { };
 
 } // end namespace detail

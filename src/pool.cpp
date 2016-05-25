@@ -12,7 +12,7 @@ void ThreadPool::addWorkers(std::size_t to_create, PolymorphicWorkerFactory fact
     this->num_pseudo_workers += to_create;
 
     for (std::size_t i = 0; i < to_create; ++i)
-        workers.push_front(std::move(factory->create(*this)));
+        workers.push_front(factory->create(*this));
 }
 
 void ThreadPool::safeRemoveWorkersWhen(std::size_t to_remove, LockPtr lock, std::function<void(PolymorphicJob&&)> how_to_remove)
@@ -25,24 +25,24 @@ void ThreadPool::safeRemoveWorkersWhen(std::size_t to_remove, LockPtr lock, std:
         lock->unlock();
 
     for (std::size_t i = 0; i < to_remove; ++i)
-        how_to_remove(std::move(this->createPoisonPill()));
+        how_to_remove(this->createPoisonPill());
 }
 
 void ThreadPool::joinAll()
 {
     Lock lock(this->thread_management);
 
-    // if a barrier already exists, just wait for that barrier to open
-    if (this->barrier)
+    // don't allow collection from a worker thread
+    if (this->unsafeIsCurrentThreadInPool())
     {
-        this->barrier->wait(lock);
         lock.unlock();
         return;
     }
 
-    // don't allow a join from a worker thread
-    if (this->unsafeIsCurrentThreadInPool())
+    // if a barrier already exists, just wait for that barrier to open
+    if (this->barrier)
     {
+        this->barrier->wait(lock);
         lock.unlock();
         return;
     }

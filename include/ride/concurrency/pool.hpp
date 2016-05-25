@@ -7,8 +7,6 @@
 
 #include <ride/concurrency/job.hpp>
 #include <ride/concurrency/containers/deque.hpp>
-//#include <ride/concurrency/detail/worker.hpp>
-//#include <ride/concurrency/detail/worker_factory.hpp>
 #include <ride/concurrency/detail/barrier.hpp>
 
 namespace ride {
@@ -185,4 +183,7 @@ class ThreadPool
 };
 
 } // end namespace ride
+
+#include <ride/concurrency/detail/worker.hpp>
+#include <ride/concurrency/detail/worker_factory.hpp>
 
