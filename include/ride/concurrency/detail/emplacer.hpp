@@ -18,6 +18,9 @@ class AbstractEmplacer
   protected:
     Container_& container;
   public:
+    AbstractEmplacer() = delete;
+    virtual ~AbstractEmplacer() = default;
+
     AbstractEmplacer(Container_& container)
       : container(container)
     { }

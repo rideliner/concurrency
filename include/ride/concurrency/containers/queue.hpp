@@ -68,6 +68,7 @@ class ConcurrentQueue
 #pragma clang diagnostic pop
   public:
     ConcurrentQueue() = default;
+    virtual ~ConcurrentQueue() = default;
 };
 
 } // end namespace ride

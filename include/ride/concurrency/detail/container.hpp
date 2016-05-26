@@ -163,6 +163,7 @@ class ConcurrentContainer
     virtual void unsafeClear() = 0;
   public:
     ConcurrentContainer() = default;
+    virtual ~ConcurrentContainer() = default;
 
     inline bool isEmpty() const
     {

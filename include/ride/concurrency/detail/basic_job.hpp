@@ -27,6 +27,7 @@ class BasicJob
     BasicJob() = delete;
     BasicJob(const BasicJob&) = delete;
     BasicJob& operator = (const BasicJob&) = delete;
+    virtual ~BasicJob() = default;
 
     BasicJob(FunctionType func)
       : func(func)

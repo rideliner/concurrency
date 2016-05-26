@@ -20,6 +20,7 @@ class BidirectionalConcurrentContainer
     { return this->data; }
   public:
     BidirectionalConcurrentContainer() = default;
+    virtual ~BidirectionalConcurrentContainer() = default;
 
     inline void pushFront(const T_& element)
     {

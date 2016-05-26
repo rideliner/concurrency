@@ -87,6 +87,7 @@ class ConcurrentDeque
 #pragma clang diagnostic pop
   public:
     ConcurrentDeque() = default;
+    virtual ~ConcurrentDeque() = default;
 };
 
 } // end namespace ride

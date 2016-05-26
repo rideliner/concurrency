@@ -19,6 +19,7 @@ class ForwardConcurrentContainer
     { return this->data; }
   public:
     ForwardConcurrentContainer() = default;
+    virtual ~ForwardConcurrentContainer() = default;
 
     inline void push(const T_& element)
     {

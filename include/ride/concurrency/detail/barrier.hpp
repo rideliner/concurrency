@@ -23,7 +23,7 @@ class Barrier
     Barrier() = delete;
     Barrier(const Barrier&) = delete;
     Barrier& operator = (const Barrier&) = delete;
-    virtual ~Barrier() { }
+    virtual ~Barrier() = default;
 
     Barrier(Mutex_& mutex, std::size_t wait_for_occur)
       : mutex(mutex)

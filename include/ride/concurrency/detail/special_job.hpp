@@ -19,6 +19,7 @@ class BarrierJob
     std::shared_ptr<Barrier<Mutex_>> barrier;
   public:
     BarrierJob() = delete;
+    virtual ~BarrierJob() = default;
 
     BarrierJob(std::shared_ptr<Barrier<Mutex_>> barrier)
       : barrier(barrier)
@@ -31,6 +32,7 @@ class SynchronizeJob
 {
   public:
     using BarrierJob<Mutex_>::BarrierJob;
+    virtual ~SynchronizeJob() = default;
 
     inline void operator()() override
     { this->barrier->unblockAndWait(); }
@@ -48,6 +50,7 @@ class PoisonJob
 {
   public:
     using BarrierJob<Mutex_>::BarrierJob;
+    virtual ~PoisonJob() = default;
 
     inline void operator()() override
     { if (this->barrier) this->barrier->unblock(); }

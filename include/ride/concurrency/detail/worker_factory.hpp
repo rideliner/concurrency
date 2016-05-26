@@ -21,6 +21,8 @@ class WorkerThreadFactory
     friend void ride::ThreadPool::addWorkers(std::size_t, ride::ThreadPool::PolymorphicWorkerFactory);
   protected:
     virtual std::unique_ptr<WorkerThread> create(ride::ThreadPool& owner) const = 0;
+  public:
+    virtual ~WorkerThreadFactory() = default;
 };
 
 template <class Worker_>
@@ -32,6 +34,8 @@ class SimpleWorkerThreadFactory final
     {
         return std::unique_ptr<WorkerThread>(new Worker_(owner));
     }
+  public:
+    virtual ~SimpleWorkerThreadFactory() = default;
 };
 
 } // end namespace detail

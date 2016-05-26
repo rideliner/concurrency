@@ -73,7 +73,7 @@ class WorkerThread
     WorkerThread() = delete;
     WorkerThread(const WorkerThread&) = delete;
     WorkerThread& operator = (const WorkerThread&) = delete;
-    virtual ~WorkerThread() { }
+    virtual ~WorkerThread() = default;
 
     WorkerThread(ThreadPool& owner)
       : pool(owner)

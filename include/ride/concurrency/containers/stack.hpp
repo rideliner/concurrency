@@ -68,6 +68,7 @@ class ConcurrentStack
 #pragma clang diagnostic pop
   public:
     ConcurrentStack() = default;
+    virtual ~ConcurrentStack() = default;
 };
 
 } // end namespace ride
