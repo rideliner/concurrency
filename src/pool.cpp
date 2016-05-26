@@ -13,15 +13,18 @@
 
 namespace ride {
 
-void ThreadPool::addWorkers(std::size_t to_create, PolymorphicWorkerFactory factory)
+void ThreadPool::safeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory factory, LockPtr lock)
 {
     this->num_pseudo_workers += to_create;
 
     for (std::size_t i = 0; i < to_create; ++i)
         workers.push_front(factory->create(*this));
+
+    if (lock)
+        lock->unlock();
 }
 
-void ThreadPool::safeRemoveWorkersWhen(std::size_t to_remove, LockPtr lock, std::function<void(PolymorphicJob&&)> how_to_remove)
+std::size_t ThreadPool::safeRemoveWorkers(std::size_t to_remove, LockPtr lock)
 {
     to_remove = std::min(to_remove, this->numWorkers());
 
@@ -30,8 +33,7 @@ void ThreadPool::safeRemoveWorkersWhen(std::size_t to_remove, LockPtr lock, std:
     if (lock)
         lock->unlock();
 
-    for (std::size_t i = 0; i < to_remove; ++i)
-        how_to_remove(this->createPoisonPill(this->join_barrier));
+    return to_remove;
 }
 
 std::size_t ThreadPool::setupBarrier(std::shared_ptr<Barrier>& barrier) const

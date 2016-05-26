@@ -45,19 +45,29 @@ class ThreadPool
     std::shared_ptr<Barrier> join_barrier;
     std::forward_list<PolymorphicWorker> workers;
 
+    friend class ::ride::detail::WorkerThreadFactory;
+
     inline void getJob(PolymorphicJob&& job)
     { this->work.popFront(std::move(job)); }
 
-    void safeRemoveWorkersWhen(std::size_t to_remove, LockPtr lock, std::function<void(PolymorphicJob&&)> how_to_remove);
+    void safeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory factory, LockPtr lock);
+
+    std::size_t safeRemoveWorkers(std::size_t to_remove, LockPtr lock);
 
     inline void safeRemoveWorkersNow(std::size_t to_remove, LockPtr lock)
     {
-        safeRemoveWorkersWhen(to_remove, std::move(lock), std::bind(static_cast<void(WorkContainer::*)(PolymorphicJob&&)>(&WorkContainer::pushFront), std::ref(this->work), std::placeholders::_1));
+        to_remove = safeRemoveWorkers(to_remove, std::move(lock));
+
+        for (std::size_t i = 0; i < to_remove; ++i)
+            this->work.pushFront(this->createPoisonPill(this->join_barrier));
     }
 
     inline void safeRemoveWorkersLater(std::size_t to_remove, LockPtr lock)
     {
-        safeRemoveWorkersWhen(to_remove, std::move(lock), std::bind(static_cast<void(WorkContainer::*)(PolymorphicJob&&)>(&WorkContainer::pushBack), std::ref(this->work), std::placeholders::_1));
+        to_remove = safeRemoveWorkers(to_remove, std::move(lock));
+
+        for (std::size_t i = 0; i < to_remove; ++i)
+            this->work.pushBack(this->createPoisonPill(this->join_barrier));
     }
 
     bool unsafeIsCurrentThreadInPool() const;
@@ -74,12 +84,12 @@ class ThreadPool
 
     static inline PolymorphicJob createPoisonPill(std::shared_ptr<Barrier> barrier)
     {
-        return static_cast<PolymorphicJob>(new detail::PoisonJob<Mutex>(barrier));
+        return PolymorphicJob(new detail::PoisonJob<Mutex>(barrier));
     }
 
     static inline PolymorphicJob createSyncPill(std::shared_ptr<Barrier> barrier)
     {
-        return static_cast<PolymorphicJob>(new detail::SynchronizeJob<Mutex>(barrier));
+        return PolymorphicJob(new detail::SynchronizeJob<Mutex>(barrier));
     }
 
     inline void handleAfterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job)
@@ -140,22 +150,10 @@ class ThreadPool
     inline void addPriorityJob(std::unique_ptr<Job<T_>>&& job_ptr)
     { this->work.pushFront(std::move(job_ptr)); }
 
-    inline void removeWorker()
-    {
-        LockPtr lock(new Lock(this->thread_management));
-        this->safeRemoveWorkersNow(1, std::move(lock));
-    }
-
     inline void removeWorkers(std::size_t to_remove)
     {
         LockPtr lock(new Lock(this->thread_management));
         this->safeRemoveWorkersNow(to_remove, std::move(lock));
-    }
-
-    inline void removeWorkerLater()
-    {
-        LockPtr lock(new Lock(this->thread_management));
-        this->safeRemoveWorkersLater(1, std::move(lock));
     }
 
     inline void removeWorkersLater(std::size_t to_remove)
@@ -176,10 +174,11 @@ class ThreadPool
         this->safeRemoveWorkersLater(this->numWorkers(), std::move(lock));
     }
 
-    inline void addWorker(PolymorphicWorkerFactory factory)
-    { this->addWorkers(1, factory); }
-
-    void addWorkers(std::size_t to_create, PolymorphicWorkerFactory factory);
+    inline void addWorkers(std::size_t to_create, PolymorphicWorkerFactory factory)
+    {
+        LockPtr lock(new Lock(this->thread_management));
+        this->safeAddWorkers(to_create, factory, std::move(lock));
+    }
 
     inline std::size_t numWorkers() const
     { return this->num_pseudo_workers; }
