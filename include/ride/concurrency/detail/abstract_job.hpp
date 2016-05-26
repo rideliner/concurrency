@@ -8,6 +8,7 @@ class AbstractJob
   public:
     virtual void operator()() = 0;
     virtual bool isPoison() const = 0;
+    virtual bool isSync() const = 0;
 };
 
 } // end namespace detail
