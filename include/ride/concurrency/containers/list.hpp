@@ -87,6 +87,7 @@ class ConcurrentList
 #pragma clang diagnostic pop
   public:
     ConcurrentList() = default;
+    virtual ~ConcurrentList() = default;
 };
 
 } // end namespace ride

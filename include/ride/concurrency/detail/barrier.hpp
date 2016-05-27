@@ -15,15 +15,17 @@ template <class Mutex_>
 class Barrier
 {
     typedef std::unique_lock<Mutex_> Lock;
+    typedef typename std::conditional<std::is_same<Mutex_, std::mutex>::value,
+        std::condition_variable, std::condition_variable_any>::type ConditionVar;
 
     Mutex_& mutex;
     std::atomic_size_t waiting_for;
-    std::condition_variable_any cond;
+    ConditionVar cond;
   public:
     Barrier() = delete;
     Barrier(const Barrier&) = delete;
     Barrier& operator = (const Barrier&) = delete;
-    virtual ~Barrier() { }
+    virtual ~Barrier() = default;
 
     Barrier(Mutex_& mutex, std::size_t wait_for_occur)
       : mutex(mutex)
@@ -66,7 +68,8 @@ class Barrier
 
     inline void unsafeWait(Lock& lock)
     {
-        cond.wait(lock, [&]() { return waiting_for == 0; });
+        while (waiting_for != 0)
+            cond.wait(lock);
     }
 };
 

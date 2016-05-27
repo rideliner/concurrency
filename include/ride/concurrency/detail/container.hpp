@@ -33,33 +33,21 @@ class ConcurrentContainer
   private:
     inline void wait(Lock& lock)
     {
-        this->condition.wait(lock, [this]() {
-            return !this->unsafeIsEmpty();
-        });
-    }
-
-    template <class Rep_, class Period_>
-    inline bool wait(Lock& lock, const std::chrono::duration<Rep_, Period_>& duration)
-    {
-        return this->condition.wait_for(lock, duration, [this]() {
-            return !this->unsafeIsEmpty();
-        });
+        while (this->unsafeIsEmpty())
+            this->condition.wait(lock);
     }
 
     template <class Clock_, class Duration_>
     inline bool wait(Lock& lock, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     {
-        return this->condition.wait_until(lock, timeout_time, [this]() {
-            return !this->unsafeIsEmpty();
-        });
+        while (this->unsafeIsEmpty())
+            if (this->condition.wait_until(lock, timeout_time) == std::cv_status::timeout)
+                return !this->unsafeIsEmpty();
+        return true;
     }
 
-    inline bool wait(Lock& lock, std::try_to_lock_t)
-    {
-        return this->condition.wait(lock, [this]() {
-            return !this->unsafeIsEmpty();
-        });
-    }
+    inline bool wait(Lock&, std::try_to_lock_t) const
+    { return !this->unsafeIsEmpty(); }
 
     // returns true if the lock is still valid
     // returns false if the lock is reset
@@ -87,8 +75,13 @@ class ConcurrentContainer
         return true;
     }
 
+    inline void obtainLock(LockPtr& lock) const
+    {
+        lock.reset(new Lock(this->mutex));
+    }
+
     template <class Timeout_>
-    inline bool tryLock(LockPtr& lock, Timeout_&& timeout) const
+    inline bool tryObtainLock(LockPtr& lock, Timeout_&& timeout) const
     {
         lock.reset(new Lock(this->mutex, std::forward<Timeout_>(timeout)));
 
@@ -96,73 +89,57 @@ class ConcurrentContainer
     }
 
     template <class Timeout_>
-    inline bool tryLockForRemove(LockPtr& lock, Timeout_&& timeout) const
+    inline bool tryObtainLockForRemove(LockPtr& lock, Timeout_&& timeout) const
     {
-        return tryLock(lock, std::forward<Timeout_>(timeout)) && resetLockIfContainerEmpty(lock);
+        return tryObtainLock(lock, std::forward<Timeout_>(timeout))
+               && resetLockIfContainerEmpty(lock);
     }
   protected:
-    template <class Action_>
-    void safeAdd(Action_ action)
-    {
-        Lock lock(this->mutex);
+    inline void safeAdd(LockPtr& lock)
+    { obtainLock(lock); }
 
-        action();
+    template <class Timeout_>
+    inline bool safeTryAdd(LockPtr& lock, Timeout_&& timeout)
+    {
+        return tryObtainLock(lock, std::forward<Timeout_>(timeout));
+    }
+
+    inline void safeFinishAdd(LockPtr& lock)
+    {
         this->condition.notify_one();
-
-        lock.unlock();
-    }
-
-    template <class Action_, class Timeout_>
-    bool safeTryAdd(Action_ action, Timeout_&& timeout)
-    {
-        LockPtr lock;
-
-        if (!tryLock(lock, std::forward<Timeout_>(timeout)))
-            return false;
-
-        action();
-        this->condition.notify_one();
-
         lock->unlock();
-        return true;
     }
 
-    template <class Action_>
-    void safeRemove(Action_ action)
+    inline void safeRemove(LockPtr& lock)
     {
-        Lock lock(this->mutex);
-
-        this->wait(lock);
-
-        action();
-
-        lock.unlock();
+        obtainLock(lock);
+        this->wait(*lock);
     }
 
-    template <class Action_, class Timeout_>
-    bool safeTryRemove(Action_ action, Timeout_&& timeout)
+    template <class Timeout_>
+    inline bool safeTryRemove(LockPtr& lock, Timeout_&& timeout)
     {
-        LockPtr lock;
-
-        if (!tryLockForRemove(lock, std::forward<Timeout_>(timeout)))
-            return false;
-
-        // if not empty or timedout
-        if (!this->wait(lock, std::forward<Timeout_>(timeout)))
-            return false;
-
-        action();
-
-        lock->unlock();
-
-        return true;
+        return tryObtainLockForRemove(lock, std::forward<Timeout_>(timeout))
+               && this->wait(*lock, std::forward<Timeout_>(timeout));
     }
+
+    template <class Rep_, class Period_>
+    inline bool safeTryRemove(LockPtr& lock, const std::chrono::duration<Rep_, Period_>& duration)
+    {
+        // fix issue of double wait (obtain lock and wait for insertion)
+        // converts the duration into a time_point object
+        return safeTryRemove(lock, std::chrono::steady_clock::now() + duration);
+    }
+
+    inline void safeFinishRemove(LockPtr& lock)
+    { lock->unlock(); }
 
     virtual bool unsafeIsEmpty() const = 0;
     virtual std::size_t unsafeSize() const = 0;
     virtual void unsafeClear() = 0;
   public:
     ConcurrentContainer() = default;
+    virtual ~ConcurrentContainer() = default;
 
     inline bool isEmpty() const
     {

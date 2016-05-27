@@ -20,6 +20,8 @@ class Job
       : detail::BasicJob<F_>(func)
     { }
 
+    virtual ~Job() = default;
+
     void operator ()() override
     {
         try {
@@ -38,6 +40,8 @@ class Job<void>
     Job(typename detail::BasicJob<void>::FunctionType func)
       : detail::BasicJob<void>(func)
     { }
+
+    virtual ~Job() = default;
 
     void operator ()() override
     {
