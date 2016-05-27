@@ -33,33 +33,21 @@ class ConcurrentContainer
   private:
     inline void wait(Lock& lock)
     {
-        this->condition.wait(lock, [this]() {
-            return !this->unsafeIsEmpty();
-        });
-    }
-
-    template <class Rep_, class Period_>
-    inline bool wait(Lock& lock, const std::chrono::duration<Rep_, Period_>& duration)
-    {
-        return this->condition.wait_for(lock, duration, [this]() {
-            return !this->unsafeIsEmpty();
-        });
+        while (this->unsafeIsEmpty())
+            this->condition.wait(lock);
     }
 
     template <class Clock_, class Duration_>
     inline bool wait(Lock& lock, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     {
-        return this->condition.wait_until(lock, timeout_time, [this]() {
-            return !this->unsafeIsEmpty();
-        });
+        while (this->unsafeIsEmpty())
+            if (this->condition.wait_until(lock, timeout_time) == std::cv_status::timeout)
+                return !this->unsafeIsEmpty();
+        return true;
     }
 
-    inline bool wait(Lock& lock, std::try_to_lock_t)
-    {
-        return this->condition.wait(lock, [this]() {
-            return !this->unsafeIsEmpty();
-        });
-    }
+    inline bool wait(Lock&, std::try_to_lock_t) const
+    { return !this->unsafeIsEmpty(); }
 
     // returns true if the lock is still valid
     // returns false if the lock is reset
@@ -133,6 +121,14 @@ class ConcurrentContainer
     {
         return tryObtainLockForRemove(lock, std::forward<Timeout_>(timeout))
                && this->wait(*lock, std::forward<Timeout_>(timeout));
+    }
+
+    template <class Rep_, class Period_>
+    inline bool safeTryRemove(LockPtr& lock, const std::chrono::duration<Rep_, Period_>& duration)
+    {
+        // fix issue of double wait (obtain lock and wait for insertion)
+        // converts the duration into a time_point object
+        return safeTryRemove(lock, std::chrono::steady_clock::now() + duration);
     }
 
     inline void safeFinishRemove(LockPtr& lock)
