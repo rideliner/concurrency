@@ -15,162 +15,244 @@ class ForwardConcurrentContainer
   : public ConcurrentContainer<T_, Container_>
   , public AbstractForwardContainer<T_, Container_>
 {
+    typedef typename ConcurrentContainer<T_, Container_>::LockPtr LockPtr;
+
     inline Container_& getInternalData() override
     { return this->data; }
   public:
     ForwardConcurrentContainer() = default;
     virtual ~ForwardConcurrentContainer() = default;
 
-    inline void push(const T_& element)
+    void push(const T_& element)
     {
-        this->safeAdd([&]() {
-            this->unsafeAddFront(element);
-        });
+        LockPtr lock;
+        this->safeAdd(lock);
+        this->unsafeAddFront(element);
+        this->safeFinishAdd(lock);
     }
 
     template <class Rep_, class Period_>
-    inline bool tryPushFor(const T_& element, const std::chrono::duration<Rep_, Period_>& duration)
+    bool tryPushFor(const T_& element, const std::chrono::duration<Rep_, Period_>& duration)
     {
-        return this->safeTryAdd([&]() {
-            this->unsafeAddFront(element);
-        }, duration);
+        LockPtr lock;
+        if (!this->safeTryAdd(lock, duration))
+            return false;
+
+        this->unsafeAddFront(element);
+        this->safeFinishAdd(lock);
+
+        return true;
     }
 
     template <class Clock_, class Duration_>
-    inline bool tryPushUntil(const T_& element, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
+    bool tryPushUntil(const T_& element, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     {
-        return this->safeTryAdd([&]() {
-            this->unsafeAddFront(element);
-        }, timeout_time);
+        LockPtr lock;
+        if (!this->safeTryAdd(lock, timeout_time))
+            return false;
+
+        this->unsafeAddFront(element);
+        this->safeFinishAdd(lock);
+
+        return true;
     }
 
-    inline bool tryPush(const T_& element)
+    bool tryPush(const T_& element)
     {
-        return this->safeTryAdd([&]() {
-            this->unsafeAddFront(element);
-        }, std::try_to_lock);
+        LockPtr lock;
+        if (!this->safeTryAdd(lock, std::try_to_lock))
+            return false;
+
+        this->unsafeAddFront(element);
+        this->safeFinishAdd(lock);
+
+        return true;
     }
 
-    inline void push(T_&& element)
+    void push(T_&& element)
     {
-        this->safeAdd([&]() {
-            this->unsafeAddFront(std::move(element));
-        });
+        LockPtr lock;
+        this->safeAdd(lock);
+        this->unsafeAddFront(std::move(element));
+        this->safeFinishAdd(lock);
     }
 
     template <class Rep_, class Period_>
-    inline bool tryPushFor(T_&& element, const std::chrono::duration<Rep_, Period_>& duration)
+    bool tryPushFor(T_&& element, const std::chrono::duration<Rep_, Period_>& duration)
     {
-        return this->safeTryAdd([&]() {
-            this->unsafeAddFront(std::move(element));
-        }, duration);
+        LockPtr lock;
+        if (!this->safeTryAdd(lock, duration))
+            return false;
+
+        this->unsafeAddFront(std::move(element));
+        this->safeFinishAdd(lock);
+
+        return true;
     }
 
     template <class Clock_, class Duration_>
-    inline bool tryPushUntil(T_&& element, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
+    bool tryPushUntil(T_&& element, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     {
-        return this->safeTryAdd([&]() {
-            this->unsafeAddFront(std::move(element));
-        }, timeout_time);
+        LockPtr lock;
+        if (!this->safeTryAdd(lock, timeout_time))
+            return false;
+
+        this->unsafeAddFront(std::move(element));
+        this->safeFinishAdd(lock);
+
+        return true;
     }
 
-    inline bool tryPush(T_&& element)
+    bool tryPush(T_&& element)
     {
-        return this->safeTryAdd([&]() {
-            this->unsafeAddFront(std::move(element));
-        }, std::try_to_lock);
+        LockPtr lock;
+        if (!this->safeTryAdd(lock, std::try_to_lock))
+            return false;
+
+        this->unsafeAddFront(std::move(element));
+        this->safeFinishAdd(lock);
+
+        return true;
     }
 
     template <class... Args_>
-    inline void emplace(Args_&&... args)
+    void emplace(Args_&&... args)
     {
-        this->safeAdd([&]() {
-            this->unsafeCreateFront(std::forward<Args_>(args)...);
-        });
+        LockPtr lock;
+        this->safeAdd(lock);
+        this->unsafeCreateFront(std::forward<Args_>(args)...);
+        this->safeFinishAdd(lock);
     }
 
     template <class... Args_, class Rep_, class Period_>
-    inline bool tryEmplaceFor(Args_&&... args, const std::chrono::duration<Rep_, Period_>& duration)
+    bool tryEmplaceFor(Args_&&... args, const std::chrono::duration<Rep_, Period_>& duration)
     {
-        return this->safeTryAdd([&]() {
-            this->unsafeCreateFront(std::forward<Args_>(args)...);
-        }, duration);
+        LockPtr lock;
+        if (!this->safeTryAdd(lock, duration))
+            return false;
+
+        this->unsafeCreateFront(std::forward<Args_>(args)...);
+        this->safeFinishAdd(lock);
+
+        return true;
     }
 
     template <class... Args_, class Clock_, class Duration_>
-    inline bool tryEmplaceUntil(Args_&&... args, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
+    bool tryEmplaceUntil(Args_&&... args, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     {
-        return this->safeTryAdd([&]() {
-            this->unsafeCreateFront(std::forward<Args_>(args)...);
-        }, timeout_time);
+        LockPtr lock;
+        if (!this->safeTryAdd(lock, timeout_time))
+            return false;
+
+        this->unsafeCreateFront(std::forward<Args_>(args)...);
+        this->safeFinishAdd(lock);
+
+        return true;
     }
 
     template <class... Args_>
-    inline bool tryEmplace(Args_&&... args)
+    bool tryEmplace(Args_&&... args)
     {
-        return this->safeTryAdd([&]() {
-            this->unsafeCreateFront(std::forward<Args_>(args)...);
-        }, std::try_to_lock);
+        LockPtr lock;
+        if (!this->safeTryAdd(lock, std::try_to_lock))
+            return false;
+
+        this->unsafeCreateFront(std::forward<Args_>(args)...);
+        this->safeFinishAdd(lock);
+
+        return true;
     }
 
-    inline void pop(T_& element)
+    void pop(T_& element)
     {
-        this->safeRemove([&]() {
-            this->unsafeRemoveFront(element);
-        });
-    }
-
-    template <class Rep_, class Period_>
-    inline bool tryPopFor(T_& element, const std::chrono::duration<Rep_, Period_>& duration)
-    {
-        return this->safeTryRemove([&]() {
-            this->unsafeRemoveFront(element);
-        }, duration);
-    }
-
-    template <class Clock_, class Duration_>
-    inline bool tryPopUntil(T_& element, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
-    {
-        return this->safeTryRemove([&]() {
-            this->unsafeRemoveFront(element);
-        }, timeout_time);
-    }
-
-    inline bool tryPop(T_& element)
-    {
-        return this->safeTryRemove([&]() {
-            this->unsafeRemoveFront(element);
-        }, std::try_to_lock);
-    }
-
-    inline void pop(T_&& element)
-    {
-        this->safeRemove([&]() {
-            this->unsafeRemoveFront(std::move(element));
-        });
+        LockPtr lock;
+        this->safeRemove(lock);
+        this->unsafeRemoveFront(element);
+        this->safeFinishRemove(lock);
     }
 
     template <class Rep_, class Period_>
-    inline bool tryPop(T_&& element, const std::chrono::duration<Rep_, Period_>& duration)
+    bool tryPopFor(T_& element, const std::chrono::duration<Rep_, Period_>& duration)
     {
-        return this->safeTryRemove([&]() {
-            this->unsafeRemoveFront(std::move(element));
-        }, duration);
+        LockPtr lock;
+        if (!this->safeTryRemove(lock, duration))
+            return false;
+
+        this->unsafeRemoveFront(element);
+        this->safeFinishRemove(lock);
+
+        return true;
     }
 
     template <class Clock_, class Duration_>
-    inline bool tryPop(T_&& element, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
+    bool tryPopUntil(T_& element, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     {
-        return this->safeTryRemove([&]() {
-            this->unsafeRemoveFront(std::move(element));
-        }, timeout_time);
+        LockPtr lock;
+        if (!this->safeTryRemove(lock, timeout_time))
+            return false;
+
+        this->unsafeRemoveFront(element);
+        this->safeFinishRemove(lock);
+
+        return true;
     }
 
-    inline bool tryPop(T_&& element)
+    bool tryPop(T_& element)
     {
-        return this->safeTryRemove([&]() {
-            this->unsafeRemoveFront(std::move(element));
-        }, std::try_to_lock);
+        LockPtr lock;
+        if (!this->safeTryRemove(lock, std::try_to_lock))
+            return false;
+
+        this->unsafeRemoveFront(element);
+        this->safeFinishRemove(lock);
+
+        return true;
+    }
+
+    void pop(T_&& element)
+    {
+        LockPtr lock;
+        this->safeRemove(lock);
+        this->unsafeRemoveFront(std::move(element));
+        this->safeFinishRemove(lock);
+    }
+
+    template <class Rep_, class Period_>
+    bool tryPop(T_&& element, const std::chrono::duration<Rep_, Period_>& duration)
+    {
+        LockPtr lock;
+        if (!this->safeTryRemove(lock, duration))
+            return false;
+
+        this->unsafeRemoveFront(std::move(element));
+        this->safeFinishRemove(lock);
+
+        return true;
+    }
+
+    template <class Clock_, class Duration_>
+    bool tryPop(T_&& element, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
+    {
+        LockPtr lock;
+        if (!this->safeTryRemove(lock, timeout_time))
+            return false;
+
+        this->unsafeRemoveFront(std::move(element));
+        this->safeFinishRemove(lock);
+
+        return true;
+    }
+
+    bool tryPop(T_&& element)
+    {
+        LockPtr lock;
+        if (!this->safeTryRemove(lock, std::try_to_lock))
+            return false;
+
+        this->unsafeRemoveFront(std::move(element));
+        this->safeFinishRemove(lock);
+
+        return true;
     }
 };
 
