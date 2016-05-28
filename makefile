@@ -4,16 +4,18 @@ BUILDDIR = build
 SRCDIR = src
 
 CXX = clang++
-CXXFLAGS = -pthread -std=c++14 -I$(INCLUDEDIR) -Wall
+CXXFLAGS = -pthread -std=c++14 -I$(INCLUDEDIR) -fPIC -Wall
 LINKFLAGS = -L$(LIBDIR) -lconcurrency
 OUTPUT_OPTION = -o $@
 
 TESTDIR = test
 TESTBUILDDIR = $(BUILDDIR)/$(TESTDIR)
+EXAMPLESDIR = examples
+EXAMPLESBUILDDIR = $(BUILDDIR)/$(EXAMPLESDIR)
 
-DIRS = $(LIBDIR) $(BUILDDIR) $(TESTBUILDDIR)
+DIRS = $(LIBDIR) $(BUILDDIR) $(TESTBUILDDIR) $(EXAMPLESBUILDDIR)
 
-LIB_OUT = $(LIBDIR)/libconcurrency.a
+LIB_OUT = $(LIBDIR)/libconcurrency.so
 TEST_OUT = $(BUILDDIR)/run_tests
 TEST_MAIN = $(TESTDIR)/main.cpp
 
@@ -27,6 +29,10 @@ TEST_BASE_FILENAMES = $(basename $(TEST_FILES))
 TEST_OBJ_FILES = $(patsubst $(TESTDIR)/%,$(TESTBUILDDIR)/%.o,$(TEST_BASE_FILENAMES))
 TEST_DEP_FILES = $(patsubst $(TESTDIR)/%,$(TESTBUILDDIR)/%.d,$(TEST_BASE_FILENAMES))
 
+EXAMPLE_FILES = $(wildcard $(EXAMPLESDIR)/*.cpp)
+EXAMPLE_BASE_FILENAMES = $(basename $(EXAMPLE_FILES))
+EXAMPLE_OUT_FILES = $(patsubst $(EXAMPLESDIR)/%,$(EXAMPLESBUILDDIR)/%,$(EXAMPLE_BASE_FILENAMES))
+
 define dependency-flags
 -MT $@ -MMD -MP -MF $1/$*.dTemp
 endef
@@ -36,13 +42,8 @@ define compile
 	@-mv -f $1/$*.dTemp $1/$*.d
 endef
 
-define link
-	$(CXX) $(CXXFLAGS) $(LINKFLAGS) $(OUTPUT_OPTION)
-endef
-
-define static-build
-	ar crf $@ $^
-endef
+LINK = $(CXX) $(CXXFLAGS) $^ $(OUTPUT_OPTION) $(LINKFLAGS)
+LIBRARY = $(CXX) -fPIC -shared $^ $(OUTPUT_OPTION)
 
 default: all
 
@@ -50,13 +51,16 @@ $(BUILDDIR)/%.o : $(SRCDIR)/%.cpp $(BUILDDIR)/%.d | $(BUILDDIR)
 	$(call compile,$(BUILDDIR))
 
 $(LIB_OUT): $(OBJ_FILES) | $(LIBDIR)
-	$(call static-build)
+	$(LIBRARY)
 
 $(TEST_OBJ_FILES): $(TESTBUILDDIR)/%.o: $(TESTDIR)/%.cpp $(TESTBUILDDIR)/%.d | $(TESTBUILDDIR)
 	$(call compile,$(TESTBUILDDIR))
 
 $(TEST_OUT): $(TEST_MAIN) $(TEST_OBJ_FILES) | $(TESTDIR) $(LIB_OUT)
-	$(call link) -lgtest $^
+	$(LINK) -lgtest
+
+$(EXAMPLE_OUT_FILES): $(EXAMPLESBUILDDIR)/%: $(EXAMPLESDIR)/%.cpp | $(EXAMPLESBUILDDIR) $(LIB_OUT)
+	$(LINK)
 
 $(BUILDDIR)/%.d: | $(BUILDDIR) ;
 $(TESTBUILDDIR)/%.d: | $(TESTBUILDDIR) ;
@@ -64,12 +68,17 @@ $(TESTBUILDDIR)/%.d: | $(TESTBUILDDIR) ;
 
 -include $(DEP_FILES) $(TEST_DEP_FILES)
 
+all: $(LIB_OUT) tests
+
+examples: $(EXAMPLE_OUT_FILES)
+
+tests: $(TEST_OUT)
+	$(TEST_OUT)
+
 clean:
 	-rm -rf $(DIRS)
 
 $(DIRS):
 	@-mkdir -p $@
 
-all: $(LIB_OUT) $(TEST_OUT)
-
-.PHONY: all clean default
+.PHONY: all clean default examples tests
