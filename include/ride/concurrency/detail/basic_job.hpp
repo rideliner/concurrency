@@ -44,7 +44,7 @@ class BasicJob
         func = std::move(other.func);
     }
 
-    inline std::future<ResultType> getFuture() const
+    inline std::future<ResultType> getFuture()
     { return promise.get_future(); }
 
     inline bool isPoison() const final override
