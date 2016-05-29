@@ -88,9 +88,7 @@ class ThreadPool
     }
 
     static inline PolymorphicJob createSyncPill(std::shared_ptr<Barrier> barrier)
-    {
-        return PolymorphicJob(new detail::SynchronizeJob<Mutex>(barrier));
-    }
+    { return PolymorphicJob(new detail::SynchronizeJob<Mutex>(barrier)); }
 
     inline void handleAfterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job)
     { this->afterExecuteJob(worker, job); }
@@ -130,17 +128,27 @@ class ThreadPool
     ThreadPool& operator = (const ThreadPool&) = delete;
     virtual ~ThreadPool() = default;
 
-    template <class Func_>
-    inline static PolymorphicJob createJob(Func_ function)
-    { return PolymorphicJob(new Job<typename Func_::result_type>(function)); }
+    template <class Func_, class Ret_ = typename Func_::result_type>
+    inline static std::unique_ptr<Job<Ret_>> createJob(Func_ function)
+    { return std::unique_ptr<Job<Ret_>>(new Job<Ret_>(function)); }
 
-    template <class Func_>
-    inline void emplaceJob(Func_ function)
-    { this->work.emplaceBack(new Job<typename Func_::result_type>(function)); }
+    template <class Func_, class Ret_ = typename Func_::result_type>
+    inline std::future<Ret_> emplaceJob(Func_ function)
+    {
+        std::unique_ptr<Job<Ret_>> job = createJob(function);
+        std::future<Ret_> future = job->getFuture();
+        addJob(std::move(job));
+        return future;
+    }
 
-    template <class Func_>
-    inline void emplacePriorityJob(Func_ function)
-    { this->work.emplaceFront(new Job<typename Func_::result_type>(function)); }
+    template <class Func_, class Ret_ = typename Func_::result_type>
+    inline std::future<Ret_> emplacePriorityJob(Func_ function)
+    {
+        std::unique_ptr<Job<Ret_>> job = createJob(function);
+        std::future<Ret_> future = job->getFuture();
+        addPriorityJob(std::move(job));
+        return future;
+    }
 
     template <class T_>
     inline void addJob(std::unique_ptr<Job<T_>>&& job_ptr)
