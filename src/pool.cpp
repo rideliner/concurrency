@@ -41,7 +41,7 @@ std::size_t ThreadPool::setupBarrier(std::shared_ptr<Barrier>& barrier) const
     std::size_t num_workers = this->numWorkers();
 
     if (num_workers > 0)
-        barrier.reset(new Barrier(this->thread_management, num_workers));
+        barrier.reset(new Barrier(num_workers));
 
     return num_workers;
 }
@@ -61,8 +61,8 @@ void ThreadPool::safeJoin(bool remove_workers)
     // copy the shared_ptr so it doesn't get reset while waiting on it
     if (std::shared_ptr<Barrier> barrier = this->join_barrier)
     {
-        barrier->unsafeWait(lock);
         lock.unlock();
+        barrier->wait();
         return;
     }
 
@@ -73,12 +73,14 @@ void ThreadPool::safeJoin(bool remove_workers)
         else
             synchronizeWorkers(num_workers, this->join_barrier);
 
+        lock.unlock();
+
         // wait for the barrier to open, then destroy it
-        this->join_barrier->unsafeWait(lock);
+        this->join_barrier->wait();
         this->join_barrier.reset();
     }
-
-    lock.unlock();
+    else
+        lock.unlock();
 }
 
 void ThreadPool::sync()

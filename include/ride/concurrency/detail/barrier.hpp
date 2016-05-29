@@ -18,7 +18,7 @@ class Barrier
     typedef typename std::conditional<std::is_same<Mutex_, std::mutex>::value,
         std::condition_variable, std::condition_variable_any>::type ConditionVar;
 
-    Mutex_& mutex;
+    Mutex_ mutex;
     std::atomic_size_t waiting_for;
     ConditionVar cond;
   public:
@@ -27,18 +27,15 @@ class Barrier
     Barrier& operator = (const Barrier&) = delete;
     virtual ~Barrier() = default;
 
-    Barrier(Mutex_& mutex, std::size_t wait_for_occur)
-      : mutex(mutex)
-      , waiting_for(wait_for_occur)
+    Barrier(std::size_t wait_for_occur)
+      : waiting_for(wait_for_occur)
     { }
 
     inline void unblock()
     {
-        Lock lock(this->mutex);
+        std::lock_guard<Mutex_> lock(this->mutex);
 
         unsafeUnblock();
-
-        lock.unlock();
     }
 
     inline void unblockAndWait()
@@ -46,30 +43,27 @@ class Barrier
         Lock lock(this->mutex);
 
         unsafeUnblock();
-        unsafeWait(lock);
-
-        lock.unlock();
+        unsafeWait(std::move(lock));
     }
 
     inline void wait()
     {
         Lock lock(this->mutex);
 
-        unsafeWait(lock);
-
-        lock.unlock();
+        unsafeWait(std::move(lock));
     }
-
+  private:
     inline void unsafeUnblock()
     {
         if (--waiting_for == 0)
             cond.notify_all();
     }
 
-    inline void unsafeWait(Lock& lock)
+    inline void unsafeWait(Lock&& lock)
     {
         while (waiting_for != 0)
             cond.wait(lock);
+        lock.unlock();
     }
 };
 
