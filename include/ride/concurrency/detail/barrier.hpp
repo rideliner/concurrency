@@ -11,16 +11,11 @@
 
 namespace ride { namespace detail {
 
-template <class Mutex_>
 class Barrier
 {
-    typedef std::unique_lock<Mutex_> Lock;
-    typedef typename std::conditional<std::is_same<Mutex_, std::mutex>::value,
-        std::condition_variable, std::condition_variable_any>::type ConditionVar;
-
-    Mutex_ mutex;
+    std::mutex mutex;
     std::atomic_size_t waiting_for;
-    ConditionVar cond;
+    std::condition_variable cond;
   public:
     Barrier() = delete;
     Barrier(const Barrier&) = delete;
@@ -33,14 +28,14 @@ class Barrier
 
     inline void unblock()
     {
-        std::lock_guard<Mutex_> lock(this->mutex);
+        std::lock_guard<std::mutex> lock(this->mutex);
 
         unsafeUnblock();
     }
 
     inline void unblockAndWait()
     {
-        Lock lock(this->mutex);
+        std::unique_lock<std::mutex> lock(this->mutex);
 
         unsafeUnblock();
         unsafeWait(std::move(lock));
@@ -48,7 +43,7 @@ class Barrier
 
     inline void wait()
     {
-        Lock lock(this->mutex);
+        std::unique_lock<std::mutex> lock(this->mutex);
 
         unsafeWait(std::move(lock));
     }
@@ -59,7 +54,7 @@ class Barrier
             cond.notify_all();
     }
 
-    inline void unsafeWait(Lock&& lock)
+    inline void unsafeWait(std::unique_lock<std::mutex>&& lock)
     {
         while (waiting_for != 0)
             cond.wait(lock);

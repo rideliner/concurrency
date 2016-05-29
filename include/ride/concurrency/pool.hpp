@@ -19,8 +19,6 @@ namespace detail {
 
 class WorkerThread;
 class WorkerThreadFactory;
-
-template <class Mutex_>
 class Barrier;
 
 } // end namespace detail
@@ -37,12 +35,11 @@ class ThreadPool
     typedef std::unique_lock<Mutex> Lock;
     typedef std::unique_ptr<Lock> LockPtr;
     typedef std::lock_guard<Mutex> LockGuard;
-    typedef detail::Barrier<Mutex> Barrier;
 
     WorkContainer work;
     mutable Mutex thread_management;
     std::atomic_size_t num_pseudo_workers, num_alive_workers;
-    std::shared_ptr<Barrier> join_barrier;
+    std::shared_ptr<detail::Barrier> join_barrier;
     std::forward_list<PolymorphicWorker> workers;
 
     friend class ::ride::detail::WorkerThreadFactory;
@@ -74,21 +71,21 @@ class ThreadPool
 
     void safeJoin(bool remove_workers);
 
-    inline void synchronizeWorkers(std::size_t num_workers, std::shared_ptr<Barrier> barrier)
+    inline void synchronizeWorkers(std::size_t num_workers, std::shared_ptr<detail::Barrier> barrier)
     {
         for (std::size_t i = 0; i < num_workers; ++i)
             this->work.pushBack(this->createSyncPill(barrier));
     }
 
-    std::size_t setupBarrier(std::shared_ptr<Barrier>& barrier) const;
+    std::size_t setupBarrier(std::shared_ptr<detail::Barrier>& barrier) const;
 
-    static inline PolymorphicJob createPoisonPill(std::shared_ptr<Barrier> barrier)
+    static inline PolymorphicJob createPoisonPill(std::shared_ptr<detail::Barrier> barrier)
     {
-        return PolymorphicJob(new detail::PoisonJob<Mutex>(barrier));
+        return PolymorphicJob(new detail::PoisonJob(barrier));
     }
 
-    static inline PolymorphicJob createSyncPill(std::shared_ptr<Barrier> barrier)
-    { return PolymorphicJob(new detail::SynchronizeJob<Mutex>(barrier)); }
+    static inline PolymorphicJob createSyncPill(std::shared_ptr<detail::Barrier> barrier)
+    { return PolymorphicJob(new detail::SynchronizeJob(barrier)); }
 
     inline void handleAfterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job)
     { this->afterExecuteJob(worker, job); }

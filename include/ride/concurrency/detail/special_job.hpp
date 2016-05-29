@@ -11,27 +11,25 @@
 
 namespace ride { namespace detail {
 
-template <class Mutex_>
 class BarrierJob
   : public AbstractJob
 {
   protected:
-    std::shared_ptr<Barrier<Mutex_>> barrier;
+    std::shared_ptr<Barrier> barrier;
   public:
     BarrierJob() = delete;
     virtual ~BarrierJob() = default;
 
-    BarrierJob(std::shared_ptr<Barrier<Mutex_>> barrier)
+    BarrierJob(std::shared_ptr<Barrier> barrier)
       : barrier(barrier)
     { }
 };
 
-template <class Mutex_>
 class SynchronizeJob
-  : public BarrierJob<Mutex_>
+  : public BarrierJob
 {
   public:
-    using BarrierJob<Mutex_>::BarrierJob;
+    using BarrierJob::BarrierJob;
     virtual ~SynchronizeJob() = default;
 
     inline void operator()() override
@@ -44,12 +42,11 @@ class SynchronizeJob
     { return true; }
 };
 
-template <class Mutex_>
 class PoisonJob
-  : public BarrierJob<Mutex_>
+  : public BarrierJob
 {
   public:
-    using BarrierJob<Mutex_>::BarrierJob;
+    using BarrierJob::BarrierJob;
     virtual ~PoisonJob() = default;
 
     inline void operator()() override
