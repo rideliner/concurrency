@@ -11,6 +11,9 @@ namespace ride { namespace detail {
 class AbstractJob
 {
   public:
+    AbstractJob() = default;
+    virtual ~AbstractJob() = default;
+
     virtual void operator()() = 0;
     virtual bool isPoison() const = 0;
     virtual bool isSync() const = 0;

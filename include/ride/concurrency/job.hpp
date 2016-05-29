@@ -16,9 +16,7 @@ class Job
   : public detail::BasicJob<F_>
 {
   public:
-    Job(typename detail::BasicJob<F_>::FunctionType func)
-      : detail::BasicJob<F_>(func)
-    { }
+    using detail::BasicJob<F_>::BasicJob;
 
     virtual ~Job() = default;
 
@@ -37,9 +35,7 @@ class Job<void>
   : public detail::BasicJob<void>
 {
   public:
-    Job(typename detail::BasicJob<void>::FunctionType func)
-      : detail::BasicJob<void>(func)
-    { }
+    using detail::BasicJob<void>::BasicJob;
 
     virtual ~Job() = default;
 
