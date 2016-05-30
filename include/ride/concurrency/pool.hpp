@@ -8,7 +8,7 @@
 
 #include <memory>
 #include <thread>
-#include <forward_list>
+#include <unordered_map>
 
 #include <ride/concurrency/job.hpp>
 #include <ride/concurrency/containers/deque.hpp>
@@ -40,12 +40,14 @@ class ThreadPool
     mutable Mutex thread_management;
     std::atomic_size_t num_pseudo_workers, num_alive_workers;
     std::shared_ptr<detail::Barrier> join_barrier;
-    std::forward_list<PolymorphicWorker> workers;
+    std::unordered_map<std::thread::id, PolymorphicWorker> workers;
 
     friend class ::ride::detail::WorkerThreadFactory;
 
     inline void getJob(PolymorphicJob&& job)
     { this->work.popFront(std::move(job)); }
+
+    std::pair<std::thread::id, PolymorphicWorker> createWorker(PolymorphicWorkerFactory factory);
 
     void safeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory factory, LockPtr lock);
 
@@ -67,7 +69,8 @@ class ThreadPool
             this->work.pushBack(this->createPoisonPill(this->join_barrier));
     }
 
-    bool unsafeIsCurrentThreadInPool() const;
+    inline bool unsafeIsCurrentThreadInPool() const
+    { return this->workers.find(std::this_thread::get_id()) != this->workers.end(); }
 
     void safeJoin(bool remove_workers);
 
@@ -202,7 +205,11 @@ class ThreadPool
     { safeJoin(false); }
     void sync();
 
-    bool isCurrentThreadInPool() const;
+    inline bool isCurrentThreadInPool() const
+    {
+        LockGuard lock(this->thread_management);
+        return unsafeIsCurrentThreadInPool();
+    }
 
     friend class detail::WorkerThread;
 };

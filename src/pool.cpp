@@ -13,12 +13,18 @@
 
 namespace ride {
 
+std::pair<std::thread::id, ThreadPool::PolymorphicWorker> ThreadPool::createWorker(PolymorphicWorkerFactory factory)
+{
+    PolymorphicWorker worker = factory->create(*this);
+    return std::make_pair(worker->getId(), std::move(worker));
+}
+
 void ThreadPool::safeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory factory, LockPtr lock)
 {
     this->num_pseudo_workers += to_create;
 
     for (std::size_t i = 0; i < to_create; ++i)
-        workers.push_front(factory->create(*this));
+        workers.insert(createWorker(factory));
 
     if (lock)
         lock->unlock();
@@ -93,28 +99,13 @@ void ThreadPool::sync()
     lock.unlock();
 }
 
-bool ThreadPool::unsafeIsCurrentThreadInPool() const
-{
-    std::thread::id id = std::this_thread::get_id();
-
-    return std::any_of(this->workers.begin(), this->workers.end(), [&id](const PolymorphicWorker& x) -> bool { return x->getId() == id; });
-}
-
-bool ThreadPool::isCurrentThreadInPool() const
-{
-    LockGuard lock(this->thread_management);
-
-    return unsafeIsCurrentThreadInPool();
-}
-
 void ThreadPool::handleOnShutdownWorker(detail::WorkerThread& worker)
 {
     this->onShutdownWorker(worker);
 
-    std::thread::id id = worker.getId();
     Lock lock(this->thread_management);
 
-    this->workers.remove_if([&id](const PolymorphicWorker& x) -> bool { return x->getId() == id; });
+    this->workers.erase(worker.getId());
 
     lock.unlock();
 

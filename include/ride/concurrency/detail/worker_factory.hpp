@@ -18,7 +18,8 @@ class WorkerThread;
 
 class WorkerThreadFactory
 {
-    friend void ride::ThreadPool::safeAddWorkers(std::size_t, ride::ThreadPool::PolymorphicWorkerFactory, ride::ThreadPool::LockPtr);
+    friend std::pair<std::thread::id, ThreadPool::PolymorphicWorker>
+        ThreadPool::createWorker(ThreadPool::PolymorphicWorkerFactory factory);
   protected:
     virtual std::unique_ptr<WorkerThread> create(ride::ThreadPool& owner) const = 0;
   public:
