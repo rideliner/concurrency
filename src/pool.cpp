@@ -5,17 +5,13 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <ride/concurrency/pool.hpp>
-#include <ride/concurrency/detail/worker.hpp>
-#include <ride/concurrency/detail/worker_factory.hpp>
 #include <ride/concurrency/detail/barrier.hpp>
-
-#include <algorithm>
 
 namespace ride {
 
 std::pair<std::thread::id, ThreadPool::PolymorphicWorker> ThreadPool::createWorker(PolymorphicWorkerFactory factory)
 {
-    PolymorphicWorker worker = factory->create(*this);
+    PolymorphicWorker worker = factory->create(creatorKey, *this);
     return std::make_pair(worker->getId(), std::move(worker));
 }
 
@@ -99,7 +95,7 @@ void ThreadPool::sync()
     lock.unlock();
 }
 
-void ThreadPool::handleOnShutdownWorker(detail::WorkerThread& worker)
+void ThreadPool::handleOnShutdownWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker)
 {
     this->onShutdownWorker(worker);
 

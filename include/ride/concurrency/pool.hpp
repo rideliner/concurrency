@@ -12,6 +12,7 @@
 
 #include <ride/concurrency/job.hpp>
 #include <ride/concurrency/containers/deque.hpp>
+#include <ride/concurrency/detail/pass_keys.hpp>
 
 namespace ride {
 
@@ -38,14 +39,10 @@ class ThreadPool
 
     WorkContainer work;
     mutable Mutex thread_management;
+    detail::CreateWorkerKey creatorKey;
     std::atomic_size_t num_pseudo_workers, num_alive_workers;
     std::shared_ptr<detail::Barrier> join_barrier;
     std::unordered_map<std::thread::id, PolymorphicWorker> workers;
-
-    friend class ::ride::detail::WorkerThreadFactory;
-
-    inline void getJob(PolymorphicJob&& job)
-    { this->work.popFront(std::move(job)); }
 
     std::pair<std::thread::id, PolymorphicWorker> createWorker(PolymorphicWorkerFactory factory);
 
@@ -89,27 +86,6 @@ class ThreadPool
 
     static inline PolymorphicJob createSyncPill(std::shared_ptr<detail::Barrier> barrier)
     { return PolymorphicJob(new detail::SynchronizeJob(barrier)); }
-
-    inline void handleAfterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job)
-    { this->afterExecuteJob(worker, job); }
-
-    inline void handleBeforeExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job)
-    { this->beforeExecuteJob(worker, job); }
-
-    inline void handleOnStartupWorker(detail::WorkerThread& worker)
-    {
-        this->onStartupWorker(worker);
-
-        ++this->num_alive_workers;
-    }
-
-    void handleOnShutdownWorker(detail::WorkerThread& worker);
-
-    inline void handleOnTimeoutWorker(detail::WorkerThread& worker)
-    { this->onTimeoutWorker(worker); }
-
-    inline void handleOnSynchronizeWorker(detail::WorkerThread& worker)
-    { this->onSynchronizeWorker(worker); }
 
     inline virtual void afterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job) { }
     inline virtual void beforeExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job) { }
@@ -210,12 +186,44 @@ class ThreadPool
         LockGuard lock(this->thread_management);
         return unsafeIsCurrentThreadInPool();
     }
+  public: // private key APIs
+    inline void getJob(const detail::PoolWorkerKey&, PolymorphicJob&& job)
+    { this->work.popFront(std::move(job)); }
 
-    friend class detail::WorkerThread;
+    inline bool tryGetJob(const detail::PoolWorkerKey&, PolymorphicJob&& job, std::try_to_lock_t)
+    { return this->work.tryPopFront(std::move(job)); }
+
+    template <class Rep_, class Period_>
+    inline bool tryGetJob(const detail::PoolWorkerKey&, PolymorphicJob&& job, const std::chrono::duration<Rep_, Period_>& duration)
+    { return this->work.tryPopFrontFor(std::move(job), duration); }
+
+    template <class Clock_, class Duration_>
+    inline bool tryGetJob(const detail::PoolWorkerKey&, PolymorphicJob&& job, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
+    { return this->work.tryPopFrontUntil(std::move(job), timeout_time); }
+
+    inline void handleAfterExecuteJob(const detail::PoolWorkerKey&, detail::WorkerThread& worker, detail::AbstractJob& job)
+    { this->afterExecuteJob(worker, job); }
+
+    inline void handleBeforeExecuteJob(const detail::PoolWorkerKey&, detail::WorkerThread& worker, detail::AbstractJob& job)
+    { this->beforeExecuteJob(worker, job); }
+
+    inline void handleOnStartupWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker)
+    {
+        this->onStartupWorker(worker);
+
+        ++this->num_alive_workers;
+    }
+
+    void handleOnShutdownWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker);
+
+    inline void handleOnTimeoutWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker)
+    { this->onTimeoutWorker(worker); }
+
+    inline void handleOnSynchronizeWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker)
+    { this->onSynchronizeWorker(worker); }
 };
 
 } // end namespace ride
 
-#include <ride/concurrency/detail/worker.hpp>
-#include <ride/concurrency/detail/worker_factory.hpp>
+#include <ride/concurrency/worker.hpp>
 

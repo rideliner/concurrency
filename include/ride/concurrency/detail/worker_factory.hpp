@@ -18,11 +18,10 @@ class WorkerThread;
 
 class WorkerThreadFactory
 {
-    friend std::pair<std::thread::id, ThreadPool::PolymorphicWorker>
-        ThreadPool::createWorker(ThreadPool::PolymorphicWorkerFactory factory);
-  protected:
-    virtual std::unique_ptr<WorkerThread> create(ride::ThreadPool& owner) const = 0;
   public:
+    virtual std::unique_ptr<WorkerThread> create(const CreateWorkerKey&, ride::ThreadPool& owner) const = 0;
+
+    WorkerThreadFactory() = default;
     virtual ~WorkerThreadFactory() = default;
 };
 
@@ -30,12 +29,13 @@ template <class Worker_>
 class SimpleWorkerThreadFactory final
   : public WorkerThreadFactory
 {
-  protected:
-    std::unique_ptr<WorkerThread> create(ride::ThreadPool& owner) const override
-    {
-        return std::unique_ptr<WorkerThread>(new Worker_(owner));
-    }
   public:
+    std::unique_ptr<WorkerThread> create(const CreateWorkerKey& key, ride::ThreadPool& owner) const override
+    {
+        return std::unique_ptr<WorkerThread>(new Worker_(key, owner));
+    }
+
+    SimpleWorkerThreadFactory() = default;
     virtual ~SimpleWorkerThreadFactory() = default;
 };
 
