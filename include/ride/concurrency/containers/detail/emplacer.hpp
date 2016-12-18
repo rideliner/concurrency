@@ -26,14 +26,14 @@ class AbstractEmplacer
     { }
 };
 
-template <class Container_, class... Args_>
+template <class... Args_>
 class BasicForwardEmplacer
 {
   public:
     virtual void emplaceFront(Args_&&... args) = 0;
 };
 
-template <class Container_, class... Args_>
+template <class... Args_>
 class BasicBackwardEmplacer
 {
   public:
@@ -49,8 +49,8 @@ class ForwardContainerEmplace
     template <class... Args_>
     void unsafeCreateFront(Args_&&... args)
     {
-        Emplacer<Container_, Args_...> emplace(getInternalData());
-        emplace.emplaceFront(std::forward<Args_>(args)...);
+        Emplacer<Container_, Args_...> emplacer(getInternalData());
+        emplacer.emplaceFront(std::forward<Args_>(args)...);
     }
 };
 
@@ -63,8 +63,8 @@ class BackwardContainerEmplace
     template <class... Args_>
     void unsafeCreateBack(Args_&&... args)
     {
-        Emplacer<Container_, Args_...> emplace(getInternalData());
-        emplace.emplaceBack(std::forward<Args_>(args)...);
+        Emplacer<Container_, Args_...> emplacer(getInternalData());
+        emplacer.emplaceBack(std::forward<Args_>(args)...);
     }
 };
 

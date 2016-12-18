@@ -14,7 +14,7 @@
 namespace ride { namespace detail {
 
 template <class F_>
-class BasicJob
+class ActionJob
   : public AbstractJob
 {
   public:
@@ -24,24 +24,26 @@ class BasicJob
     std::promise<ResultType> promise;
     FunctionType func;
   public:
-    BasicJob() = delete;
-    BasicJob(const BasicJob&) = delete;
-    BasicJob& operator = (const BasicJob&) = delete;
-    virtual ~BasicJob() = default;
+    ActionJob() = delete;
+    ActionJob(const ActionJob&) = delete;
+    ActionJob& operator = (const ActionJob&) = delete;
+    virtual ~ActionJob() = default;
 
-    BasicJob(FunctionType func)
+    ActionJob(FunctionType func)
       : func(func)
     { }
 
-    BasicJob(BasicJob&& other)
+    ActionJob(ActionJob&& other)
       : promise(std::move(other.promise))
       , func(std::move(other.func))
     { }
 
-    BasicJob&& operator = (BasicJob&& other)
+    ActionJob& operator = (ActionJob&& other)
     {
         promise = std::move(other.promise);
         func = std::move(other.func);
+
+        return *this;
     }
 
     inline std::future<ResultType> getFuture()

@@ -80,9 +80,7 @@ class ThreadPool
     std::size_t setupBarrier(std::shared_ptr<detail::Barrier>& barrier) const;
 
     static inline PolymorphicJob createPoisonPill(std::shared_ptr<detail::Barrier> barrier)
-    {
-        return PolymorphicJob(new detail::PoisonJob(barrier));
-    }
+    { return PolymorphicJob(new detail::PoisonJob(barrier)); }
 
     static inline PolymorphicJob createSyncPill(std::shared_ptr<detail::Barrier> barrier)
     { return PolymorphicJob(new detail::SynchronizeJob(barrier)); }

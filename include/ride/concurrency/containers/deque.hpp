@@ -8,20 +8,20 @@
 
 #include <deque>
 
-#include <ride/concurrency/detail/bidirectional_container.hpp>
+#include <ride/concurrency/containers/detail/bidirectional_container.hpp>
 
 namespace ride {
 
 namespace detail {
 
-template <class T_, class... Args_>
-class Emplacer<std::deque<T_>, Args_...>
-  : AbstractEmplacer<std::deque<T_>>
-  , BasicForwardEmplacer<std::deque<T_>, Args_...>
-  , BasicBackwardEmplacer<std::deque<T_>, Args_...>
+template <class T_, class Alloc_, class... Args_>
+class Emplacer<std::deque<T_, Alloc_>, Args_...>
+  : AbstractEmplacer<std::deque<T_, Alloc_>>
+  , BasicForwardEmplacer<Args_...>
+  , BasicBackwardEmplacer<Args_...>
 {
   public:
-    using AbstractEmplacer<std::deque<T_>>::AbstractEmplacer;
+    using AbstractEmplacer<std::deque<T_, Alloc_>>::AbstractEmplacer;
 
     void emplaceFront(Args_&&... args) override
     {
@@ -36,11 +36,11 @@ class Emplacer<std::deque<T_>, Args_...>
 
 } // end namespace detail
 
-template <class T_>
+template <class T_, class Alloc_ = std::allocator<T_>>
 class ConcurrentDeque
-  : public detail::BidirectionalConcurrentContainer<T_, std::deque<T_>>
+  : public detail::BidirectionalConcurrentContainer<T_, std::deque<T_, Alloc_>>
 {
-  protected:
+  private:
     bool unsafeIsEmpty() const override
     { return this->data.empty(); }
 
@@ -86,7 +86,7 @@ class ConcurrentDeque
     }
 #pragma clang diagnostic pop
   public:
-    ConcurrentDeque() = default;
+    using detail::BidirectionalConcurrentContainer<T_, std::deque<T_, Alloc_>>::BidirectionalConcurrentContainer;
     virtual ~ConcurrentDeque() = default;
 };
 

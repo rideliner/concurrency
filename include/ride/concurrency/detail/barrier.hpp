@@ -11,6 +11,7 @@
 
 namespace ride { namespace detail {
 
+// this can be replaced by std::latch
 class Barrier
 {
     std::mutex mutex;
@@ -26,14 +27,14 @@ class Barrier
       : waiting_for(wait_for_occur)
     { }
 
-    inline void unblock()
+    inline void count_down()
     {
         std::lock_guard<std::mutex> lock(this->mutex);
 
         unsafeUnblock();
     }
 
-    inline void unblockAndWait()
+    inline void count_down_and_wait()
     {
         std::unique_lock<std::mutex> lock(this->mutex);
 

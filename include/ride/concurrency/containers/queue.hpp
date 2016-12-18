@@ -8,19 +8,19 @@
 
 #include <queue>
 
-#include <ride/concurrency/detail/forward_container.hpp>
+#include <ride/concurrency/containers/detail/forward_container.hpp>
 
 namespace ride {
 
 namespace detail {
 
-template <class T_, class... Args_>
-class Emplacer<std::queue<T_>, Args_...>
-  : AbstractEmplacer<std::queue<T_>>
-  , BasicForwardEmplacer<std::queue<T_>, Args_...>
+template <class T_, class BaseContainer_, class... Args_>
+class Emplacer<std::queue<T_, BaseContainer_>, Args_...>
+  : AbstractEmplacer<std::queue<T_, BaseContainer_>>
+  , BasicForwardEmplacer<Args_...>
 {
   public:
-    using AbstractEmplacer<std::queue<T_>>::AbstractEmplacer;
+    using AbstractEmplacer<std::queue<T_, BaseContainer_>>::AbstractEmplacer;
 
     void emplaceFront(Args_&&... args) override
     {
@@ -30,11 +30,11 @@ class Emplacer<std::queue<T_>, Args_...>
 
 } // end namespace detail
 
-template <class T_>
+template <class T_, class Alloc_ = std::allocator<T_>>
 class ConcurrentQueue
-  : public detail::ForwardConcurrentContainer<T_, std::queue<T_>>
+  : public detail::ForwardConcurrentContainer<T_, std::queue<T_, std::deque<T_, Alloc_>>>
 {
-  protected:
+  private:
     bool unsafeIsEmpty() const override
     { return this->data.empty(); }
 
@@ -67,7 +67,7 @@ class ConcurrentQueue
     }
 #pragma clang diagnostic pop
   public:
-    ConcurrentQueue() = default;
+    using detail::ForwardConcurrentContainer<T_, std::queue<T_, std::deque<T_, Alloc_>>>::ForwardConcurrentContainer;
     virtual ~ConcurrentQueue() = default;
 };
 

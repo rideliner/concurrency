@@ -6,17 +6,17 @@
 
 #pragma once
 
-#include <ride/concurrency/detail/basic_job.hpp>
+#include <ride/concurrency/detail/action_job.hpp>
 #include <ride/concurrency/detail/special_job.hpp>
 
 namespace ride {
 
 template <class F_>
 class Job
-  : public detail::BasicJob<F_>
+  : public detail::ActionJob<F_>
 {
   public:
-    using detail::BasicJob<F_>::BasicJob;
+    using detail::ActionJob<F_>::ActionJob;
 
     virtual ~Job() = default;
 
@@ -32,10 +32,10 @@ class Job
 
 template <>
 class Job<void>
-  : public detail::BasicJob<void>
+  : public detail::ActionJob<void>
 {
   public:
-    using detail::BasicJob<void>::BasicJob;
+    using detail::ActionJob<void>::ActionJob;
 
     virtual ~Job() = default;
 

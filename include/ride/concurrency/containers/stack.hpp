@@ -8,19 +8,19 @@
 
 #include <stack>
 
-#include <ride/concurrency/detail/forward_container.hpp>
+#include <ride/concurrency/containers/detail/forward_container.hpp>
 
 namespace ride {
 
 namespace detail {
 
-template <class T_, class... Args_>
-class Emplacer<std::stack<T_>, Args_...>
-  : AbstractEmplacer<std::stack<T_>>
-  , BasicForwardEmplacer<std::stack<T_>, Args_...>
+template <class T_, class Alloc_, class... Args_>
+class Emplacer<std::stack<T_, Alloc_>, Args_...>
+  : AbstractEmplacer<std::stack<T_, Alloc_>>
+  , BasicForwardEmplacer<Args_...>
 {
   public:
-    using AbstractEmplacer<std::stack<T_>>::AbstractEmplacer;
+    using AbstractEmplacer<std::stack<T_, Alloc_>>::AbstractEmplacer;
 
     void emplaceFront(Args_&&... args) override
     {
@@ -30,11 +30,11 @@ class Emplacer<std::stack<T_>, Args_...>
 
 } // end namespace detail
 
-template <class T_>
+template <class T_, class Alloc_ = std::allocator<T_>>
 class ConcurrentStack
-  : public detail::ForwardConcurrentContainer<T_, std::stack<T_>>
+  : public detail::ForwardConcurrentContainer<T_, std::stack<T_, Alloc_>>
 {
-  protected:
+  private:
     bool unsafeIsEmpty() const override
     { return this->data.empty(); }
 
@@ -52,7 +52,7 @@ class ConcurrentStack
     inline void unsafeAddFront(const T_& element)
     { this->data.push(element); }
     inline void unsafeAddFront(T_&& element)
-    { this->data.push(std::move(element));
+    { this->data.push(std::move(element)); }
 
     inline void unsafeRemoveFront(T_& element)
     {
@@ -67,7 +67,7 @@ class ConcurrentStack
     }
 #pragma clang diagnostic pop
   public:
-    ConcurrentStack() = default;
+    using detail::ForwardConcurrentContainer<T_, std::deque<T_, Alloc_>>::ForwardConcurrentContainer;
     virtual ~ConcurrentStack() = default;
 };
 

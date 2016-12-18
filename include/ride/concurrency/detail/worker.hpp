@@ -77,7 +77,7 @@ class WorkerThread
 
     template <class Timeout_>
     inline bool tryGetJobFromPool(std::unique_ptr<AbstractJob>&& job, Timeout_&& timeout)
-    { return this->pool.getJob(key, std::move(job), std::forward<Timeout_>(timeout)); }
+    { return this->pool.tryGetJob(key, std::move(job), std::forward<Timeout_>(timeout)); }
   public:
     WorkerThread() = delete;
     WorkerThread(const WorkerThread&) = delete;

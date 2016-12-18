@@ -33,7 +33,7 @@ class SynchronizeJob
     virtual ~SynchronizeJob() = default;
 
     inline void operator()() override
-    { this->barrier->unblockAndWait(); }
+    { this->barrier->count_down_and_wait(); }
 
     inline bool isPoison() const override
     { return false; }
@@ -50,7 +50,7 @@ class PoisonJob
     virtual ~PoisonJob() = default;
 
     inline void operator()() override
-    { if (this->barrier) this->barrier->unblock(); }
+    { if (this->barrier) this->barrier->count_down(); }
 
     inline bool isSync() const override
     { return false; }

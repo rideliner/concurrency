@@ -8,20 +8,20 @@
 
 #include <list>
 
-#include <ride/concurrency/detail/bidirectional_container.hpp>
+#include <ride/concurrency/containers/detail/bidirectional_container.hpp>
 
 namespace ride {
 
 namespace detail {
 
-template <class T_, class... Args_>
-class Emplacer<std::list<T_>, Args_...>
-  : AbstractEmplacer<std::list<T_>>
-  , BasicForwardEmplacer<std::list<T_>, Args_...>
-  , BasicBackwardEmplacer<std::list<T_>, Args_...>
+template <class T_, class Alloc_, class... Args_>
+class Emplacer<std::list<T_, Alloc_>, Args_...>
+  : AbstractEmplacer<std::list<T_, Alloc_>>
+  , BasicForwardEmplacer<Args_...>
+  , BasicBackwardEmplacer<Args_...>
 {
   public:
-    using AbstractEmplacer<std::list<T_>>::AbstractEmplacer;
+    using AbstractEmplacer<std::list<T_, Alloc_>>::AbstractEmplacer;
 
     void emplaceFront(Args_&&... args) override
     {
@@ -36,11 +36,11 @@ class Emplacer<std::list<T_>, Args_...>
 
 } // end namespace detail
 
-template <class T_>
+template <class T_, class Alloc_ = std::allocator<T_>>
 class ConcurrentList
-  : public detail::BidirectionalConcurrentContainer<T_, std::list<T_>>
+  : public detail::BidirectionalConcurrentContainer<T_, std::list<T_, Alloc_>>
 {
-  protected:
+  private:
     bool unsafeIsEmpty() const override
     { return this->data.empty(); }
 
@@ -86,7 +86,7 @@ class ConcurrentList
     }
 #pragma clang diagnostic pop
   public:
-    ConcurrentList() = default;
+    using detail::BidirectionalConcurrentContainer<T_, std::list<T_, Alloc_>>::BidirectionalConcurrentContainer;
     virtual ~ConcurrentList() = default;
 };
 
