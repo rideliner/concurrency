@@ -48,11 +48,11 @@ class ThreadPool
 
     void safeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory factory, LockPtr lock);
 
-    std::size_t safeRemoveWorkers(std::size_t to_remove, LockPtr lock);
+    std::size_t safeRemovePseudoWorkers(std::size_t to_remove, LockPtr lock);
 
     inline void safeRemoveWorkersNow(std::size_t to_remove, LockPtr lock)
     {
-        to_remove = safeRemoveWorkers(to_remove, std::move(lock));
+        to_remove = safeRemovePseudoWorkers(to_remove, std::move(lock));
 
         for (std::size_t i = 0; i < to_remove; ++i)
             this->work.pushFront(this->createPoisonPill(this->join_barrier));
@@ -60,7 +60,7 @@ class ThreadPool
 
     inline void safeRemoveWorkersLater(std::size_t to_remove, LockPtr lock)
     {
-        to_remove = safeRemoveWorkers(to_remove, std::move(lock));
+        to_remove = safeRemovePseudoWorkers(to_remove, std::move(lock));
 
         for (std::size_t i = 0; i < to_remove; ++i)
             this->work.pushBack(this->createPoisonPill(this->join_barrier));

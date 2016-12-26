@@ -26,7 +26,7 @@ void ThreadPool::safeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory 
         lock->unlock();
 }
 
-std::size_t ThreadPool::safeRemoveWorkers(std::size_t to_remove, LockPtr lock)
+std::size_t ThreadPool::safeRemovePseudoWorkers(std::size_t to_remove, LockPtr lock)
 {
     to_remove = std::min(to_remove, this->numWorkers());
 
