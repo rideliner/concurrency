@@ -32,7 +32,7 @@ class SynchronizeJob
     using BarrierJob::BarrierJob;
     virtual ~SynchronizeJob() = default;
 
-    inline void operator()() override
+    inline void operator()(const ride::detail::PoolWorkerKey&) override
     { this->barrier->count_down_and_wait(); }
 
     inline bool isPoison() const override
@@ -49,7 +49,7 @@ class PoisonJob
     using BarrierJob::BarrierJob;
     virtual ~PoisonJob() = default;
 
-    inline void operator()() override
+    inline void operator()(const ride::detail::PoolWorkerKey&) override
     { if (this->barrier) this->barrier->count_down(); }
 
     inline bool isSync() const override

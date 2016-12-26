@@ -30,14 +30,14 @@ void WorkerThread::run()
 
         if (job->isPoison()) {
             this->handleOnShutdown();
-            job->operator()();
+            job->operator()(key);
             continue;
         } else if (job->isSync()) {
             this->handleOnSynchronize();
-            job->operator()();
+            job->operator()(key);
         } else {
             this->handleBeforeExecute(*job);
-            job->operator()();
+            job->operator()(key);
             this->handleAfterExecute(*job);
         }
     }

@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <ride/concurrency/detail/pass_keys.hpp>
+
 namespace ride { namespace detail {
 
 class AbstractJob
@@ -14,7 +16,7 @@ class AbstractJob
     AbstractJob() = default;
     virtual ~AbstractJob() = default;
 
-    virtual void operator()() = 0;
+    virtual void operator()(const ride::detail::PoolWorkerKey&) = 0;
     virtual bool isPoison() const = 0;
     virtual bool isSync() const = 0;
 };
