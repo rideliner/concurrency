@@ -90,7 +90,8 @@ void ThreadPool::sync()
     Lock lock(this->thread_management);
     std::shared_ptr<detail::Barrier> barrier;
 
-    synchronizeWorkers(setupBarrier(barrier), barrier);
+    std::size_t num_workers = setupBarrier(barrier);
+    synchronizeWorkers(num_workers, barrier);
 
     lock.unlock();
 }
