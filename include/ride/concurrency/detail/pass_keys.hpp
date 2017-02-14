@@ -14,12 +14,12 @@ namespace detail {
 
 class WorkerThread;
 
-class CreateWorkerKey
+class StartWorkerKey
 {
     friend class ::ride::ThreadPool;
 
-    CreateWorkerKey() = default;
-    virtual ~CreateWorkerKey() = default;
+    StartWorkerKey() = default;
+    virtual ~StartWorkerKey() = default;
 };
 
 class PoolWorkerKey

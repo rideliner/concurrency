@@ -18,8 +18,12 @@ class WorkerThread;
 
 class WorkerThreadFactory
 {
+  protected:
+    template <class Worker_, class... Args_>
+    std::shared_ptr<WorkerThread> createWithArgs(std::shared_ptr<ride::ThreadPool> owner, Args_&&... args)
+    { return std::shared_ptr<WorkerThread>(new Worker_(owner, std::forward<Args_>(args)...)); }
   public:
-    virtual std::unique_ptr<WorkerThread> create(const CreateWorkerKey&, ride::ThreadPool& owner) const = 0;
+    virtual std::shared_ptr<WorkerThread> create(std::shared_ptr<ride::ThreadPool> owner) = 0;
 
     WorkerThreadFactory() = default;
     virtual ~WorkerThreadFactory() = default;
@@ -29,12 +33,10 @@ template <class Worker_>
 class SimpleWorkerThreadFactory final
   : public WorkerThreadFactory
 {
+  protected:
+    std::shared_ptr<WorkerThread> create(std::shared_ptr<ride::ThreadPool> owner) override
+    { return this->createWithArgs<Worker_>(owner); }
   public:
-    std::unique_ptr<WorkerThread> create(const CreateWorkerKey& key, ride::ThreadPool& owner) const override
-    {
-        return std::unique_ptr<WorkerThread>(new Worker_(key, owner));
-    }
-
     SimpleWorkerThreadFactory() = default;
     virtual ~SimpleWorkerThreadFactory() = default;
 };

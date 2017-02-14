@@ -13,52 +13,53 @@ namespace ride {
 namespace detail {
 
 class WorkerThread
+  : public std::enable_shared_from_this<WorkerThread>
 {
     ride::detail::PoolWorkerKey key;
   protected:
-    ride::ThreadPool& pool;
+    std::shared_ptr<ride::ThreadPool> pool;
     bool is_finished;
-    std::thread thread;
+    std::unique_ptr<std::thread> thread;
   private:
     void run();
 
     inline void handleBeforeExecute(AbstractJob& job)
     {
         this->beforeExecute(job);
-        this->pool.handleBeforeExecuteJob(key, *this, job);
+        this->pool->handleBeforeExecuteJob(key, shared_from_this(), job);
     }
 
     inline void handleAfterExecute(AbstractJob& job)
     {
         this->afterExecute(job);
-        this->pool.handleAfterExecuteJob(key, *this, job);
+        this->pool->handleAfterExecuteJob(key, shared_from_this(), job);
     }
 
     inline void handleOnStartup()
     {
         this->onStartup();
-        this->pool.handleOnStartupWorker(key, *this);
+        this->pool->handleOnStartupWorker(key, shared_from_this());
     }
 
     inline void handleOnShutdown()
     {
         this->is_finished = true;
-        this->thread.detach();
+        this->thread->detach();
 
         this->onShutdown();
-        this->pool.handleOnShutdownWorker(key, *this);
+        this->pool->handleOnShutdownWorker(key, shared_from_this());
     }
 
     inline void handleOnTimeout()
     {
         this->onTimeout();
-        this->pool.handleOnTimeoutWorker(key, *this);
+        this->pool->handleOnTimeoutWorker(key, shared_from_this());
     }
 
     inline void handleOnSynchronize()
     {
         this->onSynchronize();
-        this->pool.handleOnSynchronizeWorker(key, *this);
+        this->pool->handleOnSynchronizeWorker(key, shared_from_this());
     }
 
     inline virtual void beforeExecute(AbstractJob& job) { }
@@ -73,28 +74,32 @@ class WorkerThread
     { return this->getJobFromPool(std::move(job)); }
   protected:
     inline bool getJobFromPool(std::unique_ptr<AbstractJob>&& job)
-    { this->pool.getJob(key, std::move(job)); return false; }
+    { this->pool->getJob(key, std::move(job)); return false; }
 
     template <class Timeout_>
     inline bool tryGetJobFromPool(std::unique_ptr<AbstractJob>&& job, Timeout_&& timeout)
-    { return this->pool.tryGetJob(key, std::move(job), std::forward<Timeout_>(timeout)); }
+    { return this->pool->tryGetJob(key, std::move(job), std::forward<Timeout_>(timeout)); }
   public:
     WorkerThread() = delete;
     WorkerThread(const WorkerThread&) = delete;
     WorkerThread& operator = (const WorkerThread&) = delete;
-    virtual ~WorkerThread() = default;
 
-    WorkerThread(const CreateWorkerKey&, ThreadPool& owner)
+    WorkerThread(std::shared_ptr<ThreadPool> owner)
       : pool(owner)
       , is_finished(false)
-      , thread(std::bind(&WorkerThread::run, std::ref(*this)))
+      , thread(nullptr)
     { }
+
+    void start(const StartWorkerKey&)
+    {
+        this->thread = std::unique_ptr<std::thread>(new std::thread(std::bind(&WorkerThread::run, std::ref(*this))));
+    }
 
     inline bool isCurrentThread() const
     { return this->getId() == std::this_thread::get_id(); }
 
     inline std::thread::id getId() const
-    { return this->thread.get_id(); }
+    { return this->thread->get_id(); }
 };
 
 } // end namespace detail

@@ -11,7 +11,8 @@ namespace ride {
 
 std::pair<std::thread::id, ThreadPool::PolymorphicWorker> ThreadPool::createWorker(PolymorphicWorkerFactory factory)
 {
-    PolymorphicWorker worker = factory->create(creatorKey, *this);
+    PolymorphicWorker worker = factory->create(this->shared_from_this());
+    worker->start(starterKey);
     return std::make_pair(worker->getId(), std::move(worker));
 }
 
@@ -96,13 +97,13 @@ void ThreadPool::sync()
     lock.unlock();
 }
 
-void ThreadPool::handleOnShutdownWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker)
+void ThreadPool::handleOnShutdownWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker)
 {
     this->onShutdownWorker(worker);
 
     Lock lock(this->thread_management);
 
-    this->workers.erase(worker.getId());
+    this->workers.erase(worker->getId());
 
     lock.unlock();
 

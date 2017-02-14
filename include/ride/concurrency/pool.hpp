@@ -25,11 +25,12 @@ class Barrier;
 } // end namespace detail
 
 class ThreadPool
+  : public std::enable_shared_from_this<ThreadPool>
 {
   public:
     typedef std::unique_ptr<detail::AbstractJob> PolymorphicJob;
     typedef ConcurrentDeque<PolymorphicJob> WorkContainer;
-    typedef std::unique_ptr<detail::WorkerThread> PolymorphicWorker;
+    typedef std::shared_ptr<detail::WorkerThread> PolymorphicWorker;
     typedef std::shared_ptr<detail::WorkerThreadFactory> PolymorphicWorkerFactory;
   private:
     typedef std::mutex Mutex;
@@ -39,7 +40,7 @@ class ThreadPool
 
     WorkContainer work;
     mutable Mutex thread_management;
-    detail::CreateWorkerKey creatorKey;
+    detail::StartWorkerKey starterKey;
     std::atomic_size_t num_pseudo_workers, num_alive_workers;
     std::shared_ptr<detail::Barrier> join_barrier;
     std::unordered_map<std::thread::id, PolymorphicWorker> workers;
@@ -85,12 +86,12 @@ class ThreadPool
     static inline PolymorphicJob createSyncPill(std::shared_ptr<detail::Barrier> barrier)
     { return PolymorphicJob(new detail::SynchronizeJob(barrier)); }
 
-    inline virtual void afterExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job) { }
-    inline virtual void beforeExecuteJob(detail::WorkerThread& worker, detail::AbstractJob& job) { }
-    inline virtual void onStartupWorker(detail::WorkerThread& worker) { }
-    inline virtual void onShutdownWorker(detail::WorkerThread& worker) { }
-    inline virtual void onTimeoutWorker(detail::WorkerThread& worker) { }
-    inline virtual void onSynchronizeWorker(detail::WorkerThread& worker) { }
+    inline virtual void afterExecuteJob(std::shared_ptr<detail::WorkerThread> worker, detail::AbstractJob& job) { }
+    inline virtual void beforeExecuteJob(std::shared_ptr<detail::WorkerThread> worker, detail::AbstractJob& job) { }
+    inline virtual void onStartupWorker(std::shared_ptr<detail::WorkerThread> worker) { }
+    inline virtual void onShutdownWorker(std::shared_ptr<detail::WorkerThread> worker) { }
+    inline virtual void onTimeoutWorker(std::shared_ptr<detail::WorkerThread> worker) { }
+    inline virtual void onSynchronizeWorker(std::shared_ptr<detail::WorkerThread> worker) { }
   public:
     ThreadPool()
       : num_pseudo_workers(0)
@@ -100,7 +101,6 @@ class ThreadPool
 
     ThreadPool(const ThreadPool&) = delete;
     ThreadPool& operator = (const ThreadPool&) = delete;
-    virtual ~ThreadPool() = default;
 
     template <class Func_, class Ret_ = typename Func_::result_type>
     inline static std::unique_ptr<Job<Ret_>> createJob(Func_ function)
@@ -199,25 +199,25 @@ class ThreadPool
     inline bool tryGetJob(const detail::PoolWorkerKey&, PolymorphicJob&& job, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     { return this->work.tryPopFrontUntil(std::move(job), timeout_time); }
 
-    inline void handleAfterExecuteJob(const detail::PoolWorkerKey&, detail::WorkerThread& worker, detail::AbstractJob& job)
+    inline void handleAfterExecuteJob(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker, detail::AbstractJob& job)
     { this->afterExecuteJob(worker, job); }
 
-    inline void handleBeforeExecuteJob(const detail::PoolWorkerKey&, detail::WorkerThread& worker, detail::AbstractJob& job)
+    inline void handleBeforeExecuteJob(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker, detail::AbstractJob& job)
     { this->beforeExecuteJob(worker, job); }
 
-    inline void handleOnStartupWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker)
+    inline void handleOnStartupWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker)
     {
         this->onStartupWorker(worker);
 
         ++this->num_alive_workers;
     }
 
-    void handleOnShutdownWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker);
+    void handleOnShutdownWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker);
 
-    inline void handleOnTimeoutWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker)
+    inline void handleOnTimeoutWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker)
     { this->onTimeoutWorker(worker); }
 
-    inline void handleOnSynchronizeWorker(const detail::PoolWorkerKey&, detail::WorkerThread& worker)
+    inline void handleOnSynchronizeWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker)
     { this->onSynchronizeWorker(worker); }
 };
 
