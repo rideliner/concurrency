@@ -33,10 +33,10 @@ template <class Worker_>
 class SimpleWorkerThreadFactory final
   : public WorkerThreadFactory
 {
-  protected:
-    inline std::shared_ptr<WorkerThread> create(std::shared_ptr<ride::ThreadPool> owner) override
-    { return this->createWithArgs<Worker_>(owner); }
   public:
+    inline std::shared_ptr<WorkerThread> create(std::shared_ptr<ride::ThreadPool> owner) override final
+    { return this->createWithArgs<Worker_>(owner); }
+
     SimpleWorkerThreadFactory() = default;
     virtual ~SimpleWorkerThreadFactory() = default;
 };
