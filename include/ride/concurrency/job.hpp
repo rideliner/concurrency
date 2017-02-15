@@ -20,7 +20,7 @@ class Job
 
     virtual ~Job() = default;
 
-    void operator ()(const ride::detail::PoolWorkerKey&) override
+    inline void operator ()(const ride::detail::PoolWorkerKey&) override
     {
         try {
             this->promise.set_value(this->func());
@@ -39,7 +39,7 @@ class Job<void>
 
     virtual ~Job() = default;
 
-    void operator ()(const ride::detail::PoolWorkerKey&) override
+    inline void operator ()(const ride::detail::PoolWorkerKey&) override
     {
         try {
             this->func();

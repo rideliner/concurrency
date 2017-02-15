@@ -34,7 +34,7 @@ class SimpleWorkerThreadFactory final
   : public WorkerThreadFactory
 {
   protected:
-    std::shared_ptr<WorkerThread> create(std::shared_ptr<ride::ThreadPool> owner) override
+    inline std::shared_ptr<WorkerThread> create(std::shared_ptr<ride::ThreadPool> owner) override
     { return this->createWithArgs<Worker_>(owner); }
   public:
     SimpleWorkerThreadFactory() = default;

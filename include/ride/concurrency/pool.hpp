@@ -47,21 +47,21 @@ class ThreadPool
 
     std::pair<std::thread::id, PolymorphicWorker> createWorker(PolymorphicWorkerFactory factory);
 
-    void safeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory factory, LockPtr lock);
+    void unsafeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory factory, LockPtr lock);
 
-    std::size_t safeRemovePseudoWorkers(std::size_t to_remove, LockPtr lock);
+    std::size_t unsafeRemovePseudoWorkers(std::size_t to_remove, LockPtr lock);
 
-    inline void safeRemoveWorkersNow(std::size_t to_remove, LockPtr lock)
+    inline void unsafeRemoveWorkersNow(std::size_t to_remove, LockPtr lock)
     {
-        to_remove = safeRemovePseudoWorkers(to_remove, std::move(lock));
+        to_remove = unsafeRemovePseudoWorkers(to_remove, std::move(lock));
 
         for (std::size_t i = 0; i < to_remove; ++i)
             this->work.pushFront(this->createPoisonPill(this->join_barrier));
     }
 
-    inline void safeRemoveWorkersLater(std::size_t to_remove, LockPtr lock)
+    inline void unsafeRemoveWorkersLater(std::size_t to_remove, LockPtr lock)
     {
-        to_remove = safeRemovePseudoWorkers(to_remove, std::move(lock));
+        to_remove = unsafeRemovePseudoWorkers(to_remove, std::move(lock));
 
         for (std::size_t i = 0; i < to_remove; ++i)
             this->work.pushBack(this->createPoisonPill(this->join_barrier));
@@ -135,31 +135,31 @@ class ThreadPool
     inline void removeWorkers(std::size_t to_remove)
     {
         LockPtr lock(new Lock(this->thread_management));
-        this->safeRemoveWorkersNow(to_remove, std::move(lock));
+        this->unsafeRemoveWorkersNow(to_remove, std::move(lock));
     }
 
     inline void removeWorkersLater(std::size_t to_remove)
     {
         LockPtr lock(new Lock(this->thread_management));
-        this->safeRemoveWorkersLater(to_remove, std::move(lock));
+        this->unsafeRemoveWorkersLater(to_remove, std::move(lock));
     }
 
     inline void removeAllWorkers()
     {
         LockPtr lock(new Lock(this->thread_management));
-        this->safeRemoveWorkersNow(this->numWorkers(), std::move(lock));
+        this->unsafeRemoveWorkersNow(this->numWorkers(), std::move(lock));
     }
 
     inline void removeAllWorkersLater()
     {
         LockPtr lock(new Lock(this->thread_management));
-        this->safeRemoveWorkersLater(this->numWorkers(), std::move(lock));
+        this->unsafeRemoveWorkersLater(this->numWorkers(), std::move(lock));
     }
 
     inline void addWorkers(std::size_t to_create, PolymorphicWorkerFactory factory)
     {
         LockPtr lock(new Lock(this->thread_management));
-        this->safeAddWorkers(to_create, factory, std::move(lock));
+        this->unsafeAddWorkers(to_create, factory, std::move(lock));
     }
 
     inline std::size_t numWorkers() const

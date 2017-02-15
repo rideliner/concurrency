@@ -13,7 +13,7 @@ namespace ride {
 
 using Worker = detail::WorkerThread;
 
-template <class Worker_>
+template <class Worker_ = Worker>
 using WorkerFactory = detail::SimpleWorkerThreadFactory<Worker_>;
 
 } // end namespace ride

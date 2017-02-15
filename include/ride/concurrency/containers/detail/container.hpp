@@ -30,7 +30,7 @@ class ConcurrentContainer
 
     ContainerType data;
   private:
-    inline bool wait(Lock&, std::try_to_lock_t) const
+    inline bool wait(Lock&, std::try_to_lock_t) const final
     { return !this->unsafeIsEmpty(); }
   protected:
     virtual bool unsafeIsEmpty() const = 0;

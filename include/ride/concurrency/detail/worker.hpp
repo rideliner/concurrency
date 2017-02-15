@@ -90,7 +90,7 @@ class WorkerThread
       , thread(nullptr)
     { }
 
-    void start(const StartWorkerKey&)
+    inline void start(const StartWorkerKey&)
     {
         this->thread = std::unique_ptr<std::thread>(new std::thread(std::bind(&WorkerThread::run, std::ref(*this))));
     }

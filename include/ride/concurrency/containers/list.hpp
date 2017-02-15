@@ -23,12 +23,12 @@ class Emplacer<std::list<T_, Alloc_>, Args_...>
   public:
     using AbstractEmplacer<std::list<T_, Alloc_>>::AbstractEmplacer;
 
-    void emplaceFront(Args_&&... args) override
+    inline void emplaceFront(Args_&&... args) override
     {
         this->container.emplace_front(std::forward<Args_>(args)...);
     }
 
-    void emplaceBack(Args_&&... args) override
+    inline void emplaceBack(Args_&&... args) override
     {
         this->container.emplace_back(std::forward<Args_>(args)...);
     }
@@ -41,13 +41,13 @@ class ConcurrentList
   : public detail::BidirectionalConcurrentContainer<T_, std::list<T_, Alloc_>>
 {
   private:
-    bool unsafeIsEmpty() const override
+    inline bool unsafeIsEmpty() const override
     { return this->data.empty(); }
 
-    std::size_t unsafeSize() const override
+    inline std::size_t unsafeSize() const override
     { return this->data.size(); }
 
-    void unsafeClear() override
+    inline void unsafeClear() override
     { this->data.clear(); }
 
 #pragma clang diagnostic push

@@ -16,7 +16,7 @@ std::pair<std::thread::id, ThreadPool::PolymorphicWorker> ThreadPool::createWork
     return std::make_pair(worker->getId(), std::move(worker));
 }
 
-void ThreadPool::safeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory factory, LockPtr lock)
+void ThreadPool::unsafeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory factory, LockPtr lock)
 {
     this->num_pseudo_workers += to_create;
 
@@ -27,7 +27,7 @@ void ThreadPool::safeAddWorkers(std::size_t to_create, PolymorphicWorkerFactory 
         lock->unlock();
 }
 
-std::size_t ThreadPool::safeRemovePseudoWorkers(std::size_t to_remove, LockPtr lock)
+std::size_t ThreadPool::unsafeRemovePseudoWorkers(std::size_t to_remove, LockPtr lock)
 {
     to_remove = std::min(to_remove, this->numWorkers());
 
@@ -72,7 +72,7 @@ void ThreadPool::safeJoin(bool remove_workers)
     if (std::size_t num_workers = setupBarrier(this->join_barrier))
     { // don't setup a barrier if there are no workers
         if (remove_workers)
-            safeRemoveWorkersLater(num_workers, nullptr);
+            unsafeRemoveWorkersLater(num_workers, nullptr);
         else
             synchronizeWorkers(num_workers, this->join_barrier);
 

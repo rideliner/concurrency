@@ -22,7 +22,7 @@ class Emplacer<std::queue<T_, BaseContainer_>, Args_...>
   public:
     using AbstractEmplacer<std::queue<T_, BaseContainer_>>::AbstractEmplacer;
 
-    void emplaceFront(Args_&&... args) override
+    inline void emplaceFront(Args_&&... args) override
     {
         this->container.emplace(std::forward<Args_>(args)...);
     }
@@ -35,13 +35,13 @@ class ConcurrentQueue
   : public detail::ForwardConcurrentContainer<T_, std::queue<T_, std::deque<T_, Alloc_>>>
 {
   private:
-    bool unsafeIsEmpty() const override
+    inline bool unsafeIsEmpty() const override
     { return this->data.empty(); }
 
-    std::size_t unsafeSize() const override
+    inline std::size_t unsafeSize() const override
     { return this->data.size(); }
 
-    void unsafeClear() override
+    inline void unsafeClear() override
     {
         for (std::size_t i = 0; i < this->unsafeSize(); ++i)
             this->data.pop();
