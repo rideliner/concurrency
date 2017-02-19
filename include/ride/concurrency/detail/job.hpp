@@ -8,6 +8,7 @@
 
 #include <ride/concurrency/detail/action_job.hpp>
 #include <ride/concurrency/detail/special_job.hpp>
+#include <ride/concurrency/detail/job_traits.hpp>
 
 namespace ride { namespace detail {
 

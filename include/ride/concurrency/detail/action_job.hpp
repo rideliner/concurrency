@@ -33,6 +33,11 @@ class ActionJob
       : func(func)
     { }
 
+    template <class Func_>
+    ActionJob(Func_ func)
+      : func(FunctionType(func))
+    { }
+
     ActionJob(ActionJob&& other)
       : promise(std::move(other.promise))
       , func(std::move(other.func))

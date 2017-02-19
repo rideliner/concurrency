@@ -98,11 +98,11 @@ class ThreadPool
     ThreadPool(const ThreadPool&) = delete;
     ThreadPool& operator = (const ThreadPool&) = delete;
 
-    template <class Func_, class Ret_ = typename Func_::result_type>
+    template <class Func_, class Ret_ = typename JobResultType<Func_>::type>
     inline static std::unique_ptr<Job<Ret_>> createJob(Func_ function)
     { return std::unique_ptr<Job<Ret_>>(new Job<Ret_>(function)); }
 
-    template <class Func_, class Ret_ = typename Func_::result_type>
+    template <class Func_, class Ret_ = typename JobResultType<Func_>::type>
     inline std::future<Ret_> emplaceJob(Func_ function)
     {
         std::unique_ptr<Job<Ret_>> job = createJob(function);
@@ -111,7 +111,7 @@ class ThreadPool
         return future;
     }
 
-    template <class Func_, class Ret_ = typename Func_::result_type>
+    template <class Func_, class Ret_ = typename JobResultType<Func_>::type>
     inline std::future<Ret_> emplacePriorityJob(Func_ function)
     {
         std::unique_ptr<Job<Ret_>> job = createJob(function);
