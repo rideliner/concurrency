@@ -6,15 +6,20 @@
 
 #pragma once
 
+#include <ride/concurrency/detail/pool.hpp>
 #include <ride/concurrency/detail/worker.hpp>
 #include <ride/concurrency/detail/worker_factory.hpp>
 
 namespace ride {
 
-using Worker = detail::WorkerThread;
+template <class Func_>
+using Job = detail::Job<Func_>;
 
-template <class Worker_ = Worker>
-using WorkerFactory = detail::SimpleWorkerThreadFactory<Worker_>;
+using ThreadPool = detail::ThreadPool;
+
+using WorkerThread = detail::WorkerThread;
+
+template <class Worker_ = WorkerThread>
+using WorkerThreadFactory = detail::WorkerThreadFactory<Worker_>;
 
 } // end namespace ride
-

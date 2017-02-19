@@ -8,37 +8,34 @@
 
 #include <memory>
 
-#include <ride/concurrency/pool.hpp>
-
-namespace ride {
-
-namespace detail {
+namespace ride { namespace detail {
 
 class WorkerThread;
+class ThreadPool;
 
-class WorkerThreadFactory
+class AbstractWorkerThreadFactory
 {
   protected:
     template <class Worker_, class... Args_>
-    std::shared_ptr<WorkerThread> createWithArgs(std::shared_ptr<ride::ThreadPool> owner, Args_&&... args)
+    std::shared_ptr<WorkerThread> createWithArgs(std::shared_ptr<ThreadPool> owner, Args_&&... args)
     { return std::shared_ptr<WorkerThread>(new Worker_(owner, std::forward<Args_>(args)...)); }
   public:
-    virtual std::shared_ptr<WorkerThread> create(std::shared_ptr<ride::ThreadPool> owner) = 0;
+    virtual std::shared_ptr<WorkerThread> create(std::shared_ptr<ThreadPool> owner) = 0;
 
-    WorkerThreadFactory() = default;
-    virtual ~WorkerThreadFactory() = default;
+    AbstractWorkerThreadFactory() = default;
+    virtual ~AbstractWorkerThreadFactory() = default;
 };
 
 template <class Worker_>
-class SimpleWorkerThreadFactory final
-  : public WorkerThreadFactory
+class WorkerThreadFactory final
+  : public AbstractWorkerThreadFactory
 {
   public:
-    inline std::shared_ptr<WorkerThread> create(std::shared_ptr<ride::ThreadPool> owner) override final
+    inline std::shared_ptr<WorkerThread> create(std::shared_ptr<ThreadPool> owner) override final
     { return this->createWithArgs<Worker_>(owner); }
 
-    SimpleWorkerThreadFactory() = default;
-    virtual ~SimpleWorkerThreadFactory() = default;
+    WorkerThreadFactory() = default;
+    virtual ~WorkerThreadFactory() = default;
 };
 
 } // end namespace detail

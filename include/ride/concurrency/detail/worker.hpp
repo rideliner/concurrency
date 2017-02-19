@@ -6,18 +6,16 @@
 
 #pragma once
 
-#include <ride/concurrency/pool.hpp>
+#include <ride/concurrency/detail/pool.hpp>
 
-namespace ride {
-
-namespace detail {
+namespace ride { namespace detail {
 
 class WorkerThread
   : public std::enable_shared_from_this<WorkerThread>
 {
-    ride::detail::PoolWorkerKey key;
+    PoolWorkerKey key;
   protected:
-    std::shared_ptr<ride::ThreadPool> pool;
+    std::shared_ptr<ThreadPool> pool;
     bool is_finished;
     std::unique_ptr<std::thread> thread;
   private:

@@ -9,18 +9,18 @@
 #include <ride/concurrency/detail/action_job.hpp>
 #include <ride/concurrency/detail/special_job.hpp>
 
-namespace ride {
+namespace ride { namespace detail {
 
 template <class F_>
 class Job
-  : public detail::ActionJob<F_>
+  : public ActionJob<F_>
 {
   public:
-    using detail::ActionJob<F_>::ActionJob;
+    using ActionJob<F_>::ActionJob;
 
     virtual ~Job() = default;
 
-    inline void operator ()(const ride::detail::PoolWorkerKey&) override
+    inline void operator ()(const PoolWorkerKey&) override
     {
         try {
             this->promise.set_value(this->func());
@@ -32,14 +32,14 @@ class Job
 
 template <>
 class Job<void>
-  : public detail::ActionJob<void>
+  : public ActionJob<void>
 {
   public:
-    using detail::ActionJob<void>::ActionJob;
+    using ActionJob<void>::ActionJob;
 
     virtual ~Job() = default;
 
-    inline void operator ()(const ride::detail::PoolWorkerKey&) override
+    inline void operator ()(const PoolWorkerKey&) override
     {
         try {
             this->func();
@@ -49,6 +49,8 @@ class Job<void>
         }
     }
 };
+
+} // end namespace detail
 
 } // end namespace ride
 

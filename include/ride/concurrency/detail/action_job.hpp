@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include <ride/concurrency/detail/abstract_job.hpp>
-
 #include <functional>
 #include <future>
+
+#include <ride/concurrency/detail/abstract_job.hpp>
 
 namespace ride { namespace detail {
 

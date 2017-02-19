@@ -10,28 +10,24 @@
 #include <thread>
 #include <unordered_map>
 
-#include <ride/concurrency/job.hpp>
+#include <ride/concurrency/detail/job.hpp>
 #include <ride/concurrency/containers/deque.hpp>
 #include <ride/concurrency/detail/pass_keys.hpp>
 
-namespace ride {
-
-namespace detail {
+namespace ride { namespace detail {
 
 class WorkerThread;
-class WorkerThreadFactory;
+class AbstractWorkerThreadFactory;
 class Barrier;
-
-} // end namespace detail
 
 class ThreadPool
   : public std::enable_shared_from_this<ThreadPool>
 {
   public:
-    typedef std::unique_ptr<detail::AbstractJob> PolymorphicJob;
+    typedef std::unique_ptr<AbstractJob> PolymorphicJob;
     typedef ConcurrentDeque<PolymorphicJob> WorkContainer;
-    typedef std::shared_ptr<detail::WorkerThread> PolymorphicWorker;
-    typedef std::shared_ptr<detail::WorkerThreadFactory> PolymorphicWorkerFactory;
+    typedef std::shared_ptr<WorkerThread> PolymorphicWorker;
+    typedef std::shared_ptr<AbstractWorkerThreadFactory> PolymorphicWorkerFactory;
   private:
     typedef std::mutex Mutex;
     typedef std::unique_lock<Mutex> Lock;
@@ -40,9 +36,9 @@ class ThreadPool
 
     WorkContainer work;
     mutable Mutex thread_management;
-    detail::StartWorkerKey starterKey;
+    StartWorkerKey starterKey;
     std::atomic_size_t num_pseudo_workers, num_alive_workers;
-    std::shared_ptr<detail::Barrier> join_barrier;
+    std::shared_ptr<Barrier> join_barrier;
     std::unordered_map<std::thread::id, PolymorphicWorker> workers;
 
     std::pair<std::thread::id, PolymorphicWorker> createWorker(PolymorphicWorkerFactory factory);
@@ -72,26 +68,26 @@ class ThreadPool
 
     void safeJoin(bool remove_workers);
 
-    inline void synchronizeWorkers(std::size_t num_workers, std::shared_ptr<detail::Barrier> barrier)
+    inline void synchronizeWorkers(std::size_t num_workers, std::shared_ptr<Barrier> barrier)
     {
         for (std::size_t i = 0; i < num_workers; ++i)
             this->work.pushBack(this->createSyncPill(barrier));
     }
 
-    std::size_t setupBarrier(std::shared_ptr<detail::Barrier>& barrier) const;
+    std::size_t setupBarrier(std::shared_ptr<Barrier>& barrier) const;
 
-    static inline PolymorphicJob createPoisonPill(std::shared_ptr<detail::Barrier> barrier)
-    { return PolymorphicJob(new detail::PoisonJob(barrier)); }
+    static inline PolymorphicJob createPoisonPill(std::shared_ptr<Barrier> barrier)
+    { return PolymorphicJob(new PoisonJob(barrier)); }
 
-    static inline PolymorphicJob createSyncPill(std::shared_ptr<detail::Barrier> barrier)
-    { return PolymorphicJob(new detail::SynchronizeJob(barrier)); }
-
-    inline virtual void afterExecuteJob(std::shared_ptr<detail::WorkerThread> worker, detail::AbstractJob& job) { }
-    inline virtual void beforeExecuteJob(std::shared_ptr<detail::WorkerThread> worker, detail::AbstractJob& job) { }
-    inline virtual void onStartupWorker(std::shared_ptr<detail::WorkerThread> worker) { }
-    inline virtual void onShutdownWorker(std::shared_ptr<detail::WorkerThread> worker) { }
-    inline virtual void onTimeoutWorker(std::shared_ptr<detail::WorkerThread> worker) { }
-    inline virtual void onSynchronizeWorker(std::shared_ptr<detail::WorkerThread> worker) { }
+    static inline PolymorphicJob createSyncPill(std::shared_ptr<Barrier> barrier)
+    { return PolymorphicJob(new SynchronizeJob(barrier)); }
+  protected:
+    inline virtual void afterExecuteJob(std::shared_ptr<WorkerThread> worker, AbstractJob& job) { }
+    inline virtual void beforeExecuteJob(std::shared_ptr<WorkerThread> worker, AbstractJob& job) { }
+    inline virtual void onStartupWorker(std::shared_ptr<WorkerThread> worker) { }
+    inline virtual void onShutdownWorker(std::shared_ptr<WorkerThread> worker) { }
+    inline virtual void onTimeoutWorker(std::shared_ptr<WorkerThread> worker) { }
+    inline virtual void onSynchronizeWorker(std::shared_ptr<WorkerThread> worker) { }
   public:
     ThreadPool()
       : num_pseudo_workers(0)
@@ -185,43 +181,42 @@ class ThreadPool
         return unsafeIsCurrentThreadInPool();
     }
   public: // private key APIs
-    inline void getJob(const detail::PoolWorkerKey&, PolymorphicJob&& job)
+    inline void getJob(const PoolWorkerKey&, PolymorphicJob&& job)
     { this->work.popFront(std::move(job)); }
 
-    inline bool tryGetJob(const detail::PoolWorkerKey&, PolymorphicJob&& job, std::try_to_lock_t)
+    inline bool tryGetJob(const PoolWorkerKey&, PolymorphicJob&& job, std::try_to_lock_t)
     { return this->work.tryPopFront(std::move(job)); }
 
     template <class Rep_, class Period_>
-    inline bool tryGetJob(const detail::PoolWorkerKey&, PolymorphicJob&& job, const std::chrono::duration<Rep_, Period_>& duration)
+    inline bool tryGetJob(const PoolWorkerKey&, PolymorphicJob&& job, const std::chrono::duration<Rep_, Period_>& duration)
     { return this->work.tryPopFrontFor(std::move(job), duration); }
 
     template <class Clock_, class Duration_>
-    inline bool tryGetJob(const detail::PoolWorkerKey&, PolymorphicJob&& job, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
+    inline bool tryGetJob(const PoolWorkerKey&, PolymorphicJob&& job, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     { return this->work.tryPopFrontUntil(std::move(job), timeout_time); }
 
-    inline void handleAfterExecuteJob(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker, detail::AbstractJob& job)
+    inline void handleAfterExecuteJob(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker, AbstractJob& job)
     { this->afterExecuteJob(worker, job); }
 
-    inline void handleBeforeExecuteJob(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker, detail::AbstractJob& job)
+    inline void handleBeforeExecuteJob(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker, AbstractJob& job)
     { this->beforeExecuteJob(worker, job); }
 
-    inline void handleOnStartupWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker)
+    inline void handleOnStartupWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker)
     {
         this->onStartupWorker(worker);
 
         ++this->num_alive_workers;
     }
 
-    void handleOnShutdownWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker);
+    void handleOnShutdownWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker);
 
-    inline void handleOnTimeoutWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker)
+    inline void handleOnTimeoutWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker)
     { this->onTimeoutWorker(worker); }
 
-    inline void handleOnSynchronizeWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker)
+    inline void handleOnSynchronizeWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker)
     { this->onSynchronizeWorker(worker); }
 };
 
+} // end namespace detail
+
 } // end namespace ride
-
-#include <ride/concurrency/worker.hpp>
-

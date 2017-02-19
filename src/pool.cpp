@@ -4,10 +4,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <ride/concurrency/pool.hpp>
-#include <ride/concurrency/detail/barrier.hpp>
+#include <ride/concurrency/thread_pool.hpp>
 
-namespace ride {
+namespace ride { namespace detail {
 
 std::pair<std::thread::id, ThreadPool::PolymorphicWorker> ThreadPool::createWorker(PolymorphicWorkerFactory factory)
 {
@@ -39,12 +38,12 @@ std::size_t ThreadPool::unsafeRemovePseudoWorkers(std::size_t to_remove, LockPtr
     return to_remove;
 }
 
-std::size_t ThreadPool::setupBarrier(std::shared_ptr<detail::Barrier>& barrier) const
+std::size_t ThreadPool::setupBarrier(std::shared_ptr<Barrier>& barrier) const
 {
     std::size_t num_workers = this->numWorkers();
 
     if (num_workers > 0)
-        barrier.reset(new detail::Barrier(num_workers));
+        barrier.reset(new Barrier(num_workers));
 
     return num_workers;
 }
@@ -62,7 +61,7 @@ void ThreadPool::safeJoin(bool remove_workers)
 
     // if a barrier already exists, just wait for that barrier to open
     // copy the shared_ptr so it doesn't get reset while waiting on it
-    if (std::shared_ptr<detail::Barrier> barrier = this->join_barrier)
+    if (std::shared_ptr<Barrier> barrier = this->join_barrier)
     {
         lock.unlock();
         barrier->wait();
@@ -89,7 +88,7 @@ void ThreadPool::safeJoin(bool remove_workers)
 void ThreadPool::sync()
 {
     Lock lock(this->thread_management);
-    std::shared_ptr<detail::Barrier> barrier;
+    std::shared_ptr<Barrier> barrier;
 
     std::size_t num_workers = setupBarrier(barrier);
     synchronizeWorkers(num_workers, barrier);
@@ -97,7 +96,7 @@ void ThreadPool::sync()
     lock.unlock();
 }
 
-void ThreadPool::handleOnShutdownWorker(const detail::PoolWorkerKey&, std::shared_ptr<detail::WorkerThread> worker)
+void ThreadPool::handleOnShutdownWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker)
 {
     this->onShutdownWorker(worker);
 
@@ -109,6 +108,8 @@ void ThreadPool::handleOnShutdownWorker(const detail::PoolWorkerKey&, std::share
 
     --this->num_alive_workers;
 }
+
+} // end namespace detail
 
 } // end namespace ride
 

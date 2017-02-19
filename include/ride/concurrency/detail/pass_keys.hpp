@@ -6,17 +6,14 @@
 
 #pragma once
 
-namespace ride {
+namespace ride { namespace detail {
 
 class ThreadPool;
-
-namespace detail {
-
 class WorkerThread;
 
 class StartWorkerKey
 {
-    friend class ::ride::ThreadPool;
+    friend class ThreadPool;
 
     StartWorkerKey() = default;
     virtual ~StartWorkerKey() = default;
