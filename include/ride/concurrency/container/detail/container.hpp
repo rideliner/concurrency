@@ -11,8 +11,8 @@
 #include <mutex>
 #include <memory>
 
-#include <ride/concurrency/containers/detail/container_types.hpp>
-#include <ride/concurrency/containers/detail/safe_container.hpp>
+#include <ride/concurrency/container/detail/container_types.hpp>
+#include <ride/concurrency/container/detail/safe_container.hpp>
 
 namespace ride { namespace detail {
 

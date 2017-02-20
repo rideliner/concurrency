@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <utility>
+
 namespace ride { namespace detail {
 
 // add specializations for each container

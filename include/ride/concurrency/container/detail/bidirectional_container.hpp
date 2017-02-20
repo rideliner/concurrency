@@ -6,23 +6,23 @@
 
 #pragma once
 
-#include <ride/concurrency/containers/detail/container.hpp>
-#include <ride/concurrency/containers/detail/forward_operations.hpp>
+#include <ride/concurrency/container/detail/container.hpp>
+#include <ride/concurrency/container/detail/bidirectional_operations.hpp>
 
 namespace ride { namespace detail {
 
 template <class T_, class Container_>
-class ForwardConcurrentContainer
+class BidirectionalConcurrentContainer
   : public ConcurrentContainer<T_, Container_>
-  , public ForwardLRefOperations<T_>
-  , public ForwardRRefOperations<T_>
-  , public ForwardEmplaceOperations<Container_>
+  , public BidirectionalLRefOperations<T_>
+  , public BidirectionalRRefOperations<T_>
+  , public BidirectionalEmplaceOperations<Container_>
 {
     inline Container_& getInternalData() override
     { return this->data; }
   public:
     using ConcurrentContainer<T_, Container_>::ConcurrentContainer;
-    virtual ~ForwardConcurrentContainer() = default;
+    virtual ~BidirectionalConcurrentContainer() = default;
 };
 
 } // end namespace detail

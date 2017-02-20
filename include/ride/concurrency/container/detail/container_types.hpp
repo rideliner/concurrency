@@ -8,7 +8,7 @@
 
 #include <type_traits>
 
-#include "emplacer.hpp"
+#include <ride/concurrency/container/detail/emplacer.hpp>
 
 namespace ride { namespace detail {
 

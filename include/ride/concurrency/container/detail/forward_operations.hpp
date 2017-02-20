@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include <ride/concurrency/containers/detail/container_types.hpp>
-#include <ride/concurrency/containers/detail/safe_container.hpp>
-#include <ride/concurrency/containers/detail/operations.hpp>
+#include <ride/concurrency/container/detail/container_types.hpp>
+#include <ride/concurrency/container/detail/safe_container.hpp>
+#include <ride/concurrency/container/detail/operations.hpp>
 
 namespace ride { namespace detail {
 

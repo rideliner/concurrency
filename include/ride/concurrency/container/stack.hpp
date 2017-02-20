@@ -8,7 +8,7 @@
 
 #include <stack>
 
-#include <ride/concurrency/containers/detail/forward_container.hpp>
+#include <ride/concurrency/container/detail/forward_container.hpp>
 
 namespace ride {
 

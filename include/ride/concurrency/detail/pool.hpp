@@ -11,7 +11,7 @@
 #include <unordered_map>
 
 #include <ride/concurrency/detail/job.hpp>
-#include <ride/concurrency/containers/deque.hpp>
+#include <ride/concurrency/container/deque.hpp>
 #include <ride/concurrency/detail/pass_keys.hpp>
 
 namespace ride { namespace detail {

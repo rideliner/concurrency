@@ -8,7 +8,7 @@
 
 #include <deque>
 
-#include <ride/concurrency/containers/detail/bidirectional_container.hpp>
+#include <ride/concurrency/container/detail/bidirectional_container.hpp>
 
 namespace ride {
 
