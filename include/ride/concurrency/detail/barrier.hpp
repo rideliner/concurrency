@@ -15,7 +15,7 @@ namespace ride { namespace detail {
 class Barrier
 {
     std::mutex mutex;
-    std::atomic_size_t waiting_for;
+    std::size_t waiting_for;
     std::condition_variable cond;
   public:
     Barrier() = delete;
