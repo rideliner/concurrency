@@ -26,7 +26,7 @@ class ThreadPool
   public:
     typedef std::unique_ptr<AbstractJob> PolymorphicJob;
     typedef ConcurrentDeque<PolymorphicJob> WorkContainer;
-    typedef std::shared_ptr<WorkerThread> PolymorphicWorker;
+    typedef std::unique_ptr<WorkerThread> PolymorphicWorker;
     typedef std::shared_ptr<AbstractWorkerThreadFactory> PolymorphicWorkerFactory;
   private:
     typedef std::mutex Mutex;
@@ -82,12 +82,12 @@ class ThreadPool
     static inline PolymorphicJob createSyncPill(std::shared_ptr<Barrier> barrier)
     { return PolymorphicJob(new SynchronizeJob(barrier)); }
   protected:
-    inline virtual void afterExecuteJob(std::shared_ptr<WorkerThread> worker, AbstractJob& job) { }
-    inline virtual void beforeExecuteJob(std::shared_ptr<WorkerThread> worker, AbstractJob& job) { }
-    inline virtual void onStartupWorker(std::shared_ptr<WorkerThread> worker) { }
-    inline virtual void onShutdownWorker(std::shared_ptr<WorkerThread> worker) { }
-    inline virtual void onTimeoutWorker(std::shared_ptr<WorkerThread> worker) { }
-    inline virtual void onSynchronizeWorker(std::shared_ptr<WorkerThread> worker) { }
+    inline virtual void afterExecuteJob() { }
+    inline virtual void beforeExecuteJob() { }
+    inline virtual void onStartupWorker() { }
+    inline virtual void onShutdownWorker() { }
+    inline virtual void onTimeoutWorker() { }
+    inline virtual void onSynchronizeWorker() { }
   public:
     ThreadPool()
       : num_pseudo_workers(0)
@@ -195,26 +195,26 @@ class ThreadPool
     inline bool tryGetJob(const PoolWorkerKey&, PolymorphicJob&& job, const std::chrono::time_point<Clock_, Duration_>& timeout_time)
     { return this->work.tryPopFrontUntil(std::move(job), timeout_time); }
 
-    inline void handleAfterExecuteJob(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker, AbstractJob& job)
-    { this->afterExecuteJob(worker, job); }
+    inline void handleAfterExecuteJob(const PoolWorkerKey&)
+    { this->afterExecuteJob(); }
 
-    inline void handleBeforeExecuteJob(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker, AbstractJob& job)
-    { this->beforeExecuteJob(worker, job); }
+    inline void handleBeforeExecuteJob(const PoolWorkerKey&)
+    { this->beforeExecuteJob(); }
 
-    inline void handleOnStartupWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker)
+    inline void handleOnStartupWorker(const PoolWorkerKey&)
     {
-        this->onStartupWorker(worker);
+        this->onStartupWorker();
 
         ++this->num_alive_workers;
     }
 
-    void handleOnShutdownWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker);
+    void handleOnShutdownWorker(const PoolWorkerKey&);
 
-    inline void handleOnTimeoutWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker)
-    { this->onTimeoutWorker(worker); }
+    inline void handleOnTimeoutWorker(const PoolWorkerKey&)
+    { this->onTimeoutWorker(); }
 
-    inline void handleOnSynchronizeWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker)
-    { this->onSynchronizeWorker(worker); }
+    inline void handleOnSynchronizeWorker(const PoolWorkerKey&)
+    { this->onSynchronizeWorker(); }
 };
 
 } // end namespace detail

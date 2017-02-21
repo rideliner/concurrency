@@ -96,13 +96,13 @@ void ThreadPool::sync()
     lock.unlock();
 }
 
-void ThreadPool::handleOnShutdownWorker(const PoolWorkerKey&, std::shared_ptr<WorkerThread> worker)
+void ThreadPool::handleOnShutdownWorker(const PoolWorkerKey&)
 {
-    this->onShutdownWorker(worker);
+    this->onShutdownWorker();
 
     Lock lock(this->thread_management);
 
-    this->workers.erase(worker->getId());
+    this->workers.erase(std::this_thread::get_id());
 
     lock.unlock();
 

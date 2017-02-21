@@ -11,7 +11,6 @@
 namespace ride { namespace detail {
 
 class WorkerThread
-  : public std::enable_shared_from_this<WorkerThread>
 {
     PoolWorkerKey key;
   protected:
@@ -21,22 +20,22 @@ class WorkerThread
   private:
     void run();
 
-    inline void handleBeforeExecute(AbstractJob& job)
+    inline void handleBeforeExecute()
     {
-        this->beforeExecute(job);
-        this->pool->handleBeforeExecuteJob(key, shared_from_this(), job);
+        this->beforeExecute();
+        this->pool->handleBeforeExecuteJob(key);
     }
 
-    inline void handleAfterExecute(AbstractJob& job)
+    inline void handleAfterExecute()
     {
-        this->afterExecute(job);
-        this->pool->handleAfterExecuteJob(key, shared_from_this(), job);
+        this->afterExecute();
+        this->pool->handleAfterExecuteJob(key);
     }
 
     inline void handleOnStartup()
     {
         this->onStartup();
-        this->pool->handleOnStartupWorker(key, shared_from_this());
+        this->pool->handleOnStartupWorker(key);
     }
 
     inline void handleOnShutdown()
@@ -45,23 +44,23 @@ class WorkerThread
         this->thread->detach();
 
         this->onShutdown();
-        this->pool->handleOnShutdownWorker(key, shared_from_this());
+        this->pool->handleOnShutdownWorker(key);
     }
 
     inline void handleOnTimeout()
     {
         this->onTimeout();
-        this->pool->handleOnTimeoutWorker(key, shared_from_this());
+        this->pool->handleOnTimeoutWorker(key);
     }
 
     inline void handleOnSynchronize()
     {
         this->onSynchronize();
-        this->pool->handleOnSynchronizeWorker(key, shared_from_this());
+        this->pool->handleOnSynchronizeWorker(key);
     }
 
-    inline virtual void beforeExecute(AbstractJob& job) { }
-    inline virtual void afterExecute(AbstractJob& job) { }
+    inline virtual void beforeExecute() { }
+    inline virtual void afterExecute() { }
     inline virtual void onStartup() { }
     inline virtual void onShutdown() { }
     inline virtual void onTimeout() { }

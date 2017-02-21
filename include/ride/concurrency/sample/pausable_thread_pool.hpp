@@ -16,11 +16,11 @@ class PausableThreadPool
 {
     detail::Gate pauser;
   protected:
-    inline void beforeExecuteJob(std::shared_ptr<WorkerThread> worker, detail::AbstractJob& job) override
+    inline void beforeExecuteJob() override
     {
         pauser.wait();
 
-        ThreadPool::beforeExecuteJob(worker, job);
+        ThreadPool::beforeExecuteJob();
     }
   public:
     PausableThreadPool()

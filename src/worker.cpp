@@ -36,9 +36,9 @@ void WorkerThread::run()
             this->handleOnSynchronize();
             job->operator()(key);
         } else {
-            this->handleBeforeExecute(*job);
+            this->handleBeforeExecute();
             job->operator()(key);
-            this->handleAfterExecute(*job);
+            this->handleAfterExecute();
         }
     }
 }

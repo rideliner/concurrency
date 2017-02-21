@@ -17,10 +17,10 @@ class AbstractWorkerThreadFactory
 {
   protected:
     template <class Worker_, class... Args_>
-    std::shared_ptr<WorkerThread> createWithArgs(std::shared_ptr<ThreadPool> owner, Args_&&... args)
-    { return std::shared_ptr<WorkerThread>(new Worker_(owner, std::forward<Args_>(args)...)); }
+    std::unique_ptr<WorkerThread> createWithArgs(std::shared_ptr<ThreadPool> owner, Args_&&... args)
+    { return std::unique_ptr<WorkerThread>(new Worker_(owner, std::forward<Args_>(args)...)); }
   public:
-    virtual std::shared_ptr<WorkerThread> create(std::shared_ptr<ThreadPool> owner) = 0;
+    virtual std::unique_ptr<WorkerThread> create(std::shared_ptr<ThreadPool> owner) = 0;
 
     AbstractWorkerThreadFactory() = default;
     virtual ~AbstractWorkerThreadFactory() = default;
@@ -31,7 +31,7 @@ class WorkerThreadFactory final
   : public AbstractWorkerThreadFactory
 {
   public:
-    inline std::shared_ptr<WorkerThread> create(std::shared_ptr<ThreadPool> owner) override final
+    inline std::unique_ptr<WorkerThread> create(std::shared_ptr<ThreadPool> owner) override final
     { return this->createWithArgs<Worker_>(owner); }
 
     WorkerThreadFactory() = default;
